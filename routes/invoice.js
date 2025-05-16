@@ -610,6 +610,35 @@ app.post('/getReceiptCancel', (req, res, next) => {
     }
   );
 }); 
+
+app.post('/editSalesOrder', (req, res, next) => {
+  db.query(`UPDATE invoice
+            SET company_id=${db.escape(req.body.company_id)}
+            ,currency_id=${db.escape(req.body.currency_id)}
+              ,delivery_id=${db.escape(req.body.delivery_id)}
+            ,sales_id=${db.escape(req.body.sales_id)}
+            ,invoice_code=${db.escape(req.body.invoice_code)}
+            ,invoice_date=${db.escape(req.body.invoice_date)}
+            ,modification_date=${db.escape(req.body.modification_date)}
+            ,modified_by=${db.escape(req.body.modified_by)}
+            WHERE invoice_id = ${db.escape(req.body.invoice_id)}`,
+            (err, result) => {
+              if (err) {
+                console.log('error: ', err);
+                return res.status(400).send({
+                  data: err,
+                  msg: 'failed',
+                });
+              } else {
+                return res.status(200).send({
+                  data: result,
+                  msg: 'Success',
+          });
+        }
+            }
+          );
+        });
+        
 app.post('/editInvoiceStatus', (req, res, next) => {
   db.query(`UPDATE invoice 
             SET status = ${db.escape(req.body.status)}
@@ -1332,7 +1361,41 @@ app.post('/getInvoiceLineItemsById', (req, res, next) => {
   );
 });
 
-  app.post('/insertQuoteItems', (req, res, next) => {
+app.post('/insertQuoteItems', (req, res, next) => {
+  // Helper function to return 0 if the value is empty or not a number
+  const sanitize = (value) => {
+    return value === undefined || value === null || value === '' ? 0 : value;
+  };
+
+  let data = {
+    product_id: req.body.product_id,
+    invoice_id: req.body.invoice_id,
+    quantity: sanitize(req.body.quantity),
+    loose_qty: sanitize(req.body.loose_qty),
+    carton_qty: sanitize(req.body.carton_qty),
+    carton_price: sanitize(req.body.carton_price),
+    discount_value: sanitize(req.body.discount_value),
+    wholesale_price: sanitize(req.body.wholesale_price),
+    gross_total: sanitize(req.body.gross_total),
+    total: sanitize(req.body.total),
+  };
+
+  let sql = "INSERT INTO invoice_item SET ?";
+  db.query(sql, data, (err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send({ error: "Database insert failed." });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'New Tender has been created successfully'
+      });
+    }
+  });
+});
+
+
+  app.post('/insertQuoteItemsOld', (req, res, next) => {
     let data = {
       product_id: req.body.product_id,
       invoice_id: req.body.invoice_id,
@@ -1416,59 +1479,24 @@ app.post('/insertInvoice', (req, res, next) => {
   let data = {
     invoice_code: req.body.invoice_code
     ,  invoice_id: req.body.invoice_id
-    , order_id: req.body.order_id
     , invoice_amount: req.body.invoice_amount
     , invoice_date: req.body.invoice_date
-    , mode_of_payment: req.body.mode_of_payment
-    , status: 'Due'
+
+    , status: 'Not Paid'
     , flag: req.body.flag
     , created_by: req.body.created_by
-    , invoice_type: req.body.invoice_type
-    , invoice_due_date: req.body.invoice_due_date
-    , invoice_terms: req.body.invoice_terms
-    , notes: req.body.notes
-    , cst: req.body.cst
-    , vat: req.body.vat
-    , cst_value: req.body.cst_value
-    , vat_value: req.body.vat_value
-    , frieght: req.body.frieght
-    , p_f: req.body.p_f
-    , discount: req.body.discount
-    , invoice_code_vat: req.body.invoice_code_vat
-    , invoice_used: req.body.invoice_used
-    , invoice_code_vat_quote: req.body.invoice_code_vat_quote
-    , site_id: req.body.site_id
-    , manual_invoice_seq: req.body.manual_invoice_seq
-    , apply_general_vat: req.body.apply_general_vat
-    , selling_company: req.body.selling_company
+   
+  
     , sales_order_id: req.body.sales_order_id
-    , invoice_paid_date: req.body.invoice_paid_date
+
     , modified_by: req.body.modified_by
-    , invoice_sent_out: req.body.invoice_sent_out
-    , gst_percentage: req.body.gst_percentage
-    , title: req.body.title
-    , rate_text: req.body.rate_text
-    , qty_text: req.body.qty_text
-    , start_date: req.body.start_date
-    , end_date: req.body.end_date
-    , reference_no: req.body.reference_no
-    , CBF_Ref_No: req.body.CBF_Ref_No
-    , invoice_code_user: req.body.invoice_code_user
-    , invoice_sent_out_date: req.body.invoice_sent_out_date
-    , payment_terms: req.body.payment_terms
-    , po_number: req.body.po_number
-    , project_location: req.body.project_location
-    , project_reference: req.body.project_reference
-    , quote_code: req.body.quote_code
-    , invoice_manual_code: req.body.invoice_manual_code
-    , code: req.body.code
+    
+   
     ,  creation_date: new Date().toISOString()
     , modification_date: null
     , company_id: req.body.company_id
     , currency_id	: req.body.currency_id
-    , site_code: req.body.site_code
-    , attention: req.body.attention
-    , reference: req.body.reference
+  
  };
   let sql = "INSERT INTO invoice SET ?";
   let query = db.query(sql, data,(err, result) => {
@@ -1479,7 +1507,7 @@ app.post('/insertInvoice', (req, res, next) => {
          });
    } else {
          return res.status(200).send({
-           data: result[0],
+           data: result,
            msg:'Success'
          });
 

@@ -146,6 +146,8 @@ app.post('/editSalesOrder', (req, res, next) => {
             ,sales_id=${db.escape(req.body.sales_id)}
             ,tran_no=${db.escape(req.body.tran_no)}
             ,tran_date=${db.escape(req.body.tran_date)}
+            ,modification_date=${db.escape(req.body.modification_date)}
+            ,modified_by=${db.escape(req.body.modified_by)}
             WHERE sales_order_id = ${db.escape(req.body.sales_order_id)}`,
             (err, result) => {
               if (err) {
@@ -615,8 +617,41 @@ app.post('/updateSalesOrderSummary',  (req, res) => {
   });
 });
 
+app.post('/insertQuoteItems', (req, res, next) => {
+  // Helper function to return 0 if the value is empty or not a number
+  const sanitize = (value) => {
+    return value === undefined || value === null || value === '' ? 0 : value;
+  };
 
-  app.post('/insertQuoteItems', (req, res, next) => {
+  let data = {
+    product_id: req.body.product_id,
+    sales_order_id: req.body.sales_order_id,
+    quantity: sanitize(req.body.quantity),
+    loose_qty: sanitize(req.body.loose_qty),
+    carton_qty: sanitize(req.body.carton_qty),
+    carton_price: sanitize(req.body.carton_price),
+    discount_value: sanitize(req.body.discount_value),
+    wholesale_price: sanitize(req.body.wholesale_price),
+    gross_total: sanitize(req.body.gross_total),
+    total: sanitize(req.body.total),
+  };
+
+  let sql = "INSERT INTO sales_order_item SET ?";
+  db.query(sql, data, (err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send({ error: "Database insert failed." });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'New Tender has been created successfully'
+      });
+    }
+  });
+});
+
+
+  app.post('/insertQuoteItemsOld', (req, res, next) => {
     let data = {
       product_id: req.body.product_id,
       sales_order_id: req.body.sales_order_id,
