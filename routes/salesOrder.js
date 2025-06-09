@@ -316,7 +316,7 @@ app.post('/deleteProjectQuote', (req, res, next) => {
 
 
 app.post("/generateInvoiceFromSalesOrder", async (req, res, next) => {
-  const { sales_order_id, company_id, invoice_code, sub_total,tax, net_total, tran_date,delivery_order_id ,invoice_type,} = req.body;
+  const { sales_order_id, company_id, invoice_code, sub_total,tax, net_total, tran_date,invoice_type,} = req.body;
 
   if (!sales_order_id  || !invoice_code) {
     return res.status(400).send({
@@ -355,7 +355,6 @@ app.post("/generateInvoiceFromSalesOrder", async (req, res, next) => {
       invoice_amount: net_total, // Add the calculated total amount
        balance_amount: net_total,
       invoice_date: tran_date,
-      delivery_order_id,
       invoice_type,
     };
 
@@ -423,21 +422,21 @@ app.post("/generateInvoiceFromSalesOrder", async (req, res, next) => {
 });
 
 
-app.post("/generateDeliveryFromSalesOrder", async (req, res, next) => {
-  const { sales_order_id, company_id, delivery_code } = req.body;
+app.post("/generateInvoiceFromDeliveryOrder", async (req, res, next) => {
+  const { delivery_order_id, company_id, invoice_code, sub_total,tax, net_total, tran_date,invoice_type} = req.body;
 
-  if (!sales_order_id  || !delivery_code) {
+  if (!delivery_order_id  || !invoice_code) {
     return res.status(400).send({
-      msg: "sales_order_id, company_id, and delivery_code are required",
+      msg: "delivery_order_id, company_id, and invoice_code are required",
     });
   }
 
   try {
     // Fetch sales order items by sales_order_id
     const getSalesOrderItemsSql = `
-      SELECT * FROM sales_order_item WHERE sales_order_id = ?`;
+      SELECT * FROM delivery_order_item WHERE delivery_order_id = ?`;
     const salesOrderItems = await new Promise((resolve, reject) => {
-      db.query(getSalesOrderItemsSql, [sales_order_id], (err, result) => {
+      db.query(getSalesOrderItemsSql, [delivery_order_id], (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });
@@ -450,19 +449,24 @@ app.post("/generateDeliveryFromSalesOrder", async (req, res, next) => {
     }
 
     // Calculate the total amount for the invoice
-    const invoiceAmount = salesOrderItems.reduce((total, item) => total + item.amount, 0);
+   // const invoiceAmount = salesOrderItems.reduce((total, item) => total + item.amount, 0);
 
     const invoiceData = {
-      sales_order_id,
-      delivery_code,
+      delivery_order_id,
+      invoice_code,
       company_id,
       creation_date: new Date(),
-      delivery_status: "Pending",
-      delivery_amount: invoiceAmount, // Add the calculated total amount
+      status: "Not Paid",
+      sub_total,
+      tax,
+      invoice_amount: net_total, // Add the calculated total amount
+       balance_amount: net_total,
+      invoice_date: tran_date,
+      invoice_type,
     };
 
     // Insert invoice into the invoice table
-    const createInvoiceSql = "INSERT INTO delivery_order SET ?";
+    const createInvoiceSql = "INSERT INTO invoice SET ?";
     const invoiceResult = await new Promise((resolve, reject) => {
       db.query(createInvoiceSql, invoiceData, (err, result) => {
         if (err) reject(err);
@@ -470,23 +474,25 @@ app.post("/generateDeliveryFromSalesOrder", async (req, res, next) => {
       });
     });
 
-    const delivery_order_id = invoiceResult.insertId;
+    const invoice_id = invoiceResult.insertId;
 
     // Insert each sales order item into the invoice_item table
     const insertInvoiceItemsSql = `
-      INSERT INTO delivery_order_item (
-        qty, delivery_order_id, unit_price, item_title, amount, unit, description, remarks
+      INSERT INTO invoice_item (
+        quantity, invoice_id, carton_qty, loose_qty, carton_price, wholesale_price, product_id, total, gross_total, foc
       ) VALUES ?`;
 
     const invoiceItemsData = salesOrderItems.map((item) => [
       item.quantity,
-      delivery_order_id,
-      item.unit_price,
-      item.title,
-      item.amount,
-      item.unit,
-      item.description,
-      item.remarks,
+      invoice_id,
+      item.carton_qty,
+      item.loose_qty,
+      item.carton_price,
+      item.wholesale_price,
+      item.product_id,
+      item.total,
+      item.gross_total,
+      item.foc,
     ]);
 
     await new Promise((resolve, reject) => {
@@ -498,20 +504,20 @@ app.post("/generateDeliveryFromSalesOrder", async (req, res, next) => {
 
     // Update sales order status to 'Closed'
     const updateSalesOrderStatusSql = `
-      UPDATE sales_order
+      UPDATE  delivery_order
       SET status = 'Closed'
-      WHERE sales_order_id = ?`;
+      WHERE  delivery_order_id = ?`;
 
     await new Promise((resolve, reject) => {
-      db.query(updateSalesOrderStatusSql, [sales_order_id], (err, result) => {
+      db.query(updateSalesOrderStatusSql, [ delivery_order_id], (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });
     });
 
     return res.status(201).send({
-      msg: "Invoice and items created successfully. Sales order status updated to 'Closed'.",
-      delivery_order_id,
+      msg: "Invoice and items created successfully. Delivery order status updated to 'Closed'.",
+      invoice_id,
     });
   } catch (err) {
     console.error("Error generating invoice:", err.message);
@@ -521,7 +527,6 @@ app.post("/generateDeliveryFromSalesOrder", async (req, res, next) => {
     });
   }
 });
-
   
  app.post('/edit-TabQuoteLine', (req, res, next) => {
    
