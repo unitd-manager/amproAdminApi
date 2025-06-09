@@ -126,6 +126,85 @@ ORDER BY s.invoice_id DESC`,
             }
           );
         });
+        
+        
+        
+          app.post('/edit-TabDeliveryLine', (req, res, next) => {
+   
+    db.query(
+      `UPDATE  delivery_order_item
+            SET product_id=${db.escape(req.body.product_id)}
+            ,quantity=${db.escape(req.body.quantity)}
+            ,loose_qty=${db.escape(req.body.loose_qty)}
+            ,carton_qty=${db.escape(req.body.carton_qty)}
+            ,carton_price=${db.escape(req.body.carton_price)}
+            ,discount_value=${db.escape(req.body.discount_value)}
+            ,wholesale_price=${db.escape(req.body.wholesale_price)}
+            ,gross_total=${db.escape(req.body.gross_total)}
+            ,total=${db.escape(req.body.total)}
+      
+            WHERE delivery_order_item_id =  ${db.escape(req.body. delivery_order_item_id)}`,
+            (err, result) => {
+              if (err) {
+                console.log("error: ", err);
+                return;
+              } else {
+                return res.status(200).send({
+                  data: result,
+                  msg: "Success",
+                });
+              }
+            }
+          );
+        });
+        
+        
+        app.post('/getDeliveryorderById', (req, res, next) => {
+  db.query(` Select 
+  s.*,
+    c.company_name,
+    c.customer_code,
+    c.address_street,
+    c.address_town,
+    c.address_state,
+    c.address_country,
+    c.address_po_code,
+    c.tax_type,
+       cd.billing_address_street,
+    cd.billing_address_town,
+    cd.billing_address_state,
+    cd.billing_address_country,
+    cd.billing_address_po_code,
+    
+    c.notes,
+    cu.currency_id,
+    cu.currency_code,
+    cu.currency_name,
+    cu.currency_rate,
+    co.first_name AS contact_person 
+  From delivery_order s
+   LEFT JOIN company c ON (c.company_id = s.company_id)
+      LEFT JOIN company cd ON (cd.company_id = s.delivery_id)
+
+       LEFT JOIN contact co ON (co.company_id = c.company_id)
+  LEFT JOIN currency cu ON (cu.currency_id = s.currency_id)
+  Where s.delivery_order_id=${db.escape(req.body.delivery_order_id)}`,
+  (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+});
+}
+  }
+);
+});
 
 app.post('/getSalesorderById', (req, res, next) => {
   db.query(` Select 
@@ -274,6 +353,37 @@ app.post("/generateReceiptFromSalesOrder", async (req, res, next) => {
 
 
 
+   app.post('/getDeliveryLineItemsById', (req, res, next) => {
+  const salesOrderId = db.escape(req.body.delivery_order_id);
+
+  const query = `
+    SELECT 
+      qt.*, 
+      c.title AS product_name,
+      c.product_code,
+      c.unit,
+      c.pcs_per_carton,
+      c.purchase_unit_cost,
+      c.wholesale_price AS whole_price,
+      c.carton_price AS Cprice,
+      c.carton_qty AS Cqty
+     
+    FROM delivery_order_item qt 
+    LEFT JOIN product c ON c.product_id = qt.product_id
+    WHERE qt.delivery_order_id = ${salesOrderId}
+  `;
+
+  db.query(query, (err, result) => {
+    if (err) {
+      return res.status(400).send({ msg: 'No result found' });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+
+
 
    app.post('/getQuoteLineItemsById', (req, res, next) => {
   const salesOrderId = db.escape(req.body.invoice_id);
@@ -308,6 +418,27 @@ app.post('/deleteProjectQuote', (req, res, next) => {
 
   let data = { invoice_item_id: req.body. invoice_item_id};
   let sql = "DELETE FROM  invoice_item WHERE ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+          });
+    }
+  });
+});
+
+
+app.post('/deleteDeliveryItem', (req, res, next) => {
+
+  let data = { delivery_order_item_id: req.body.delivery_order_item_id};
+  let sql = "DELETE FROM  delivery_order_item WHERE ?";
   let query = db.query(sql, data,(err, result) => {
     if (err) {
       console.log('error: ', err)
@@ -610,6 +741,66 @@ app.post('/getReceiptCancel', (req, res, next) => {
     }
   );
 }); 
+
+app.post('/editSalesOrder', (req, res, next) => {
+  db.query(`UPDATE invoice
+            SET company_id=${db.escape(req.body.company_id)}
+            ,currency_id=${db.escape(req.body.currency_id)}
+              ,delivery_id=${db.escape(req.body.delivery_id)}
+            ,sales_id=${db.escape(req.body.sales_id)}
+            ,invoice_code=${db.escape(req.body.invoice_code)}
+            ,invoice_date=${db.escape(req.body.invoice_date)}
+            ,modification_date=${db.escape(req.body.modification_date)}
+            ,modified_by=${db.escape(req.body.modified_by)}
+            WHERE invoice_id = ${db.escape(req.body.invoice_id)}`,
+            (err, result) => {
+              if (err) {
+                console.log('error: ', err);
+                return res.status(400).send({
+                  data: err,
+                  msg: 'failed',
+                });
+              } else {
+                return res.status(200).send({
+                  data: result,
+                  msg: 'Success',
+          });
+        }
+            }
+          );
+        });
+        
+        
+        
+        app.post('/editDeliveryOrder', (req, res, next) => {
+          db.query(`UPDATE delivery_order
+            SET company_id=${db.escape(req.body.company_id)}
+            ,currency_id=${db.escape(req.body.currency_id)}
+            ,delivery_id=${db.escape(req.body.delivery_id)}
+            ,sales_id=${db.escape(req.body.sales_id)}
+            ,delivery_code=${db.escape(req.body.delivery_code)}
+            ,tran_date=${db.escape(req.body.tran_date)}
+            ,modification_date=${db.escape(req.body.modification_date)}
+            ,modified_by=${db.escape(req.body.modified_by)}
+            WHERE delivery_order_id = ${db.escape(req.body.delivery_order_id)}`,
+            (err, result) => {
+              if (err) {
+                console.log('error: ', err);
+                return res.status(400).send({
+                  data: err,
+                  msg: 'failed',
+                });
+              } else {
+                return res.status(200).send({
+                  data: result,
+                  msg: 'Success',
+          });
+        }
+            }
+          );
+        });
+        
+        
 app.post('/editInvoiceStatus', (req, res, next) => {
   db.query(`UPDATE invoice 
             SET status = ${db.escape(req.body.status)}
@@ -1332,7 +1523,76 @@ app.post('/getInvoiceLineItemsById', (req, res, next) => {
   );
 });
 
-  app.post('/insertQuoteItems', (req, res, next) => {
+app.post('/insertQuoteItems', (req, res, next) => {
+  // Helper function to return 0 if the value is empty or not a number
+  const sanitize = (value) => {
+    return value === undefined || value === null || value === '' ? 0 : value;
+  };
+
+  let data = {
+    product_id: req.body.product_id,
+    invoice_id: req.body.invoice_id,
+    quantity: sanitize(req.body.quantity),
+    loose_qty: sanitize(req.body.loose_qty),
+    carton_qty: sanitize(req.body.carton_qty),
+    carton_price: sanitize(req.body.carton_price),
+    discount_value: sanitize(req.body.discount_value),
+    wholesale_price: sanitize(req.body.wholesale_price),
+    gross_total: sanitize(req.body.gross_total),
+    total: sanitize(req.body.total),
+  };
+
+  let sql = "INSERT INTO invoice_item SET ?";
+  db.query(sql, data, (err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send({ error: "Database insert failed." });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'New Tender has been created successfully'
+      });
+    }
+  });
+});
+
+
+app.post('/insertDeliveryItems', (req, res, next) => {
+  // Helper function to return 0 if the value is empty or not a number
+  const sanitize = (value) => {
+    return value === undefined || value === null || value === '' ? 0 : value;
+  };
+
+  let data = {
+    product_id: req.body.product_id,
+    delivery_order_id: req.body.delivery_order_id,
+    quantity: sanitize(req.body.quantity),
+    loose_qty: sanitize(req.body.loose_qty),
+    carton_qty: sanitize(req.body.carton_qty),
+    carton_price: sanitize(req.body.carton_price),
+    discount_value: sanitize(req.body.discount_value),
+    wholesale_price: sanitize(req.body.wholesale_price),
+    gross_total: sanitize(req.body.gross_total),
+    total: sanitize(req.body.total),
+  };
+
+  let sql = "INSERT INTO delivery_order_item SET ?";
+  db.query(sql, data, (err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send({ error: "Database insert failed." });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'New Tender has been created successfully'
+      });
+    }
+  });
+});
+
+
+
+  app.post('/insertQuoteItemsOld', (req, res, next) => {
     let data = {
       product_id: req.body.product_id,
       invoice_id: req.body.invoice_id,
@@ -1386,8 +1646,31 @@ app.post('/getInvoiceLineItemsById', (req, res, next) => {
   });
 });
 
+  app.post('/updateBillDelDiscount', (req, res) => {
+  const { delivery_order_id, bill_discount } = req.body;
 
-app.post('/updateSalesOrderSummary',  (req, res) => {
+  if (!delivery_order_id || isNaN(bill_discount)) {
+    return res.status(400).json({ message: 'Invalid data' });
+  }
+
+  const sql = `
+    UPDATE delivery_order
+    SET bill_discount = ?
+    WHERE delivery_order_id = ?
+  `;
+
+  db.query(sql, [bill_discount, delivery_order_id], (err, result) => {
+    if (err) {
+      console.error('Error updating bill discount:', err);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+
+    res.status(200).json({ message: 'Bill discount updated successfully' });
+  });
+});
+
+
+app.post('/updateSalesOrderSummary', (req, res) => {
   const { invoice_id, sub_total, tax, net_total } = req.body;
 
   if (!invoice_id || isNaN(sub_total)) {
@@ -1395,14 +1678,14 @@ app.post('/updateSalesOrderSummary',  (req, res) => {
   }
 
   const sql = `
-    UPDATE ivoice
-   SET sub_total = ?, tax = ?, invoice_amount = ?
+    UPDATE invoice
+    SET sub_total = ?, tax = ?, invoice_amount = ?, balance_amount = ?
     WHERE invoice_id = ?
   `;
 
-  db.query(sql, [sub_total, tax, net_total,invoice_id], (err, result) => {
+  db.query(sql, [sub_total, tax, net_total, net_total, invoice_id], (err, result) => {
     if (err) {
-    console.error('Error updating invoice summary:', err);
+      console.error('Error updating invoice summary:', err);
       return res.status(500).json({ message: 'Internal server error' });
     }
 
@@ -1410,65 +1693,55 @@ app.post('/updateSalesOrderSummary',  (req, res) => {
   });
 });
 
-  
+
+
+app.post('/updateDeliveryOrderSummary', (req, res) => {
+  const { delivery_order_id, sub_total, tax, net_total } = req.body;
+
+  if (!delivery_order_id || isNaN(sub_total)) {
+    return res.status(400).json({ message: 'Invalid data' });
+  }
+
+  const sql = `
+    UPDATE delivery_order
+    SET sub_total = ?, tax = ?, delivery_amount = ?
+    WHERE delivery_order_id = ?
+  `;
+
+  db.query(sql, [sub_total, tax, net_total, delivery_order_id], (err, result) => {
+    if (err) {
+      console.error('Error updating invoice summary:', err);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+
+    res.status(200).json({ message: 'Total updated successfully' });
+  });
+});
+
+
 app.post('/insertInvoice', (req, res, next) => {
 
   let data = {
     invoice_code: req.body.invoice_code
     ,  invoice_id: req.body.invoice_id
-    , order_id: req.body.order_id
     , invoice_amount: req.body.invoice_amount
     , invoice_date: req.body.invoice_date
-    , mode_of_payment: req.body.mode_of_payment
-    , status: 'Due'
+
+    , status: 'Not Paid'
     , flag: req.body.flag
     , created_by: req.body.created_by
-    , invoice_type: req.body.invoice_type
-    , invoice_due_date: req.body.invoice_due_date
-    , invoice_terms: req.body.invoice_terms
-    , notes: req.body.notes
-    , cst: req.body.cst
-    , vat: req.body.vat
-    , cst_value: req.body.cst_value
-    , vat_value: req.body.vat_value
-    , frieght: req.body.frieght
-    , p_f: req.body.p_f
-    , discount: req.body.discount
-    , invoice_code_vat: req.body.invoice_code_vat
-    , invoice_used: req.body.invoice_used
-    , invoice_code_vat_quote: req.body.invoice_code_vat_quote
-    , site_id: req.body.site_id
-    , manual_invoice_seq: req.body.manual_invoice_seq
-    , apply_general_vat: req.body.apply_general_vat
-    , selling_company: req.body.selling_company
+   
+  
     , sales_order_id: req.body.sales_order_id
-    , invoice_paid_date: req.body.invoice_paid_date
+
     , modified_by: req.body.modified_by
-    , invoice_sent_out: req.body.invoice_sent_out
-    , gst_percentage: req.body.gst_percentage
-    , title: req.body.title
-    , rate_text: req.body.rate_text
-    , qty_text: req.body.qty_text
-    , start_date: req.body.start_date
-    , end_date: req.body.end_date
-    , reference_no: req.body.reference_no
-    , CBF_Ref_No: req.body.CBF_Ref_No
-    , invoice_code_user: req.body.invoice_code_user
-    , invoice_sent_out_date: req.body.invoice_sent_out_date
-    , payment_terms: req.body.payment_terms
-    , po_number: req.body.po_number
-    , project_location: req.body.project_location
-    , project_reference: req.body.project_reference
-    , quote_code: req.body.quote_code
-    , invoice_manual_code: req.body.invoice_manual_code
-    , code: req.body.code
+    
+   
     ,  creation_date: new Date().toISOString()
     , modification_date: null
     , company_id: req.body.company_id
     , currency_id	: req.body.currency_id
-    , site_code: req.body.site_code
-    , attention: req.body.attention
-    , reference: req.body.reference
+  
  };
   let sql = "INSERT INTO invoice SET ?";
   let query = db.query(sql, data,(err, result) => {
@@ -1479,7 +1752,7 @@ app.post('/insertInvoice', (req, res, next) => {
          });
    } else {
          return res.status(200).send({
-           data: result[0],
+           data: result,
            msg:'Success'
          });
 

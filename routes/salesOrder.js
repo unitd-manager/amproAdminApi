@@ -138,6 +138,55 @@ app.post('/getsalesorder', (req, res, next) => {
   
 });
 
+app.post('/getDeliveryOrders', (req, res, next) => {
+  let conditions = [];
+  let params = [];
+  
+  if (req.body.delivery_code) {
+    conditions.push("s.delivery_code LIKE ?");
+    params.push(`%${req.body.delivery_code}%`);
+  }
+  if (req.body.from_date) {
+    conditions.push("s.tran_date >= ?");
+    params.push(req.body.from_date);
+  }
+  if (req.body.to_date) {
+    conditions.push("s.tran_date <= ?");
+    params.push(req.body.to_date);
+  }
+  if (req.body.customer) {
+    conditions.push("c.company_name LIKE ?");
+    params.push(`%${req.body.customer}%`);
+  }
+  if (req.body.delivery_status) {
+    conditions.push("s.delivery_status = ?");
+    params.push(req.body.delivery_status);
+  }
+  
+  let whereClause = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
+  
+  db.query(`
+    SELECT 
+      s.*, c.company_name, cu.currency_code, co.first_name AS contact_person
+    FROM delivery_order s
+    LEFT JOIN company c ON c.company_id = s.company_id
+    LEFT JOIN company cd ON cd.company_id = s.delivery_id
+    LEFT JOIN contact co ON co.company_id = c.company_id
+    LEFT JOIN currency cu ON cu.currency_id = s.currency_id
+    ${whereClause}`,
+    params,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({ data: err, msg: 'failed' });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+  
+});
+
 app.post('/editSalesOrder', (req, res, next) => {
   db.query(`UPDATE sales_order 
             SET company_id=${db.escape(req.body.company_id)}
@@ -146,6 +195,8 @@ app.post('/editSalesOrder', (req, res, next) => {
             ,sales_id=${db.escape(req.body.sales_id)}
             ,tran_no=${db.escape(req.body.tran_no)}
             ,tran_date=${db.escape(req.body.tran_date)}
+            ,modification_date=${db.escape(req.body.modification_date)}
+            ,modified_by=${db.escape(req.body.modified_by)}
             WHERE sales_order_id = ${db.escape(req.body.sales_order_id)}`,
             (err, result) => {
               if (err) {
@@ -265,7 +316,7 @@ app.post('/deleteProjectQuote', (req, res, next) => {
 
 
 app.post("/generateInvoiceFromSalesOrder", async (req, res, next) => {
-  const { sales_order_id, company_id, invoice_code, sub_total,tax, net_total, tran_date } = req.body;
+  const { sales_order_id, company_id, invoice_code, sub_total,tax, net_total, tran_date,delivery_order_id ,invoice_type,} = req.body;
 
   if (!sales_order_id  || !invoice_code) {
     return res.status(400).send({
@@ -304,6 +355,8 @@ app.post("/generateInvoiceFromSalesOrder", async (req, res, next) => {
       invoice_amount: net_total, // Add the calculated total amount
        balance_amount: net_total,
       invoice_date: tran_date,
+      delivery_order_id,
+      invoice_type,
     };
 
     // Insert invoice into the invoice table
@@ -615,8 +668,41 @@ app.post('/updateSalesOrderSummary',  (req, res) => {
   });
 });
 
+app.post('/insertQuoteItems', (req, res, next) => {
+  // Helper function to return 0 if the value is empty or not a number
+  const sanitize = (value) => {
+    return value === undefined || value === null || value === '' ? 0 : value;
+  };
 
-  app.post('/insertQuoteItems', (req, res, next) => {
+  let data = {
+    product_id: req.body.product_id,
+    sales_order_id: req.body.sales_order_id,
+    quantity: sanitize(req.body.quantity),
+    loose_qty: sanitize(req.body.loose_qty),
+    carton_qty: sanitize(req.body.carton_qty),
+    carton_price: sanitize(req.body.carton_price),
+    discount_value: sanitize(req.body.discount_value),
+    wholesale_price: sanitize(req.body.wholesale_price),
+    gross_total: sanitize(req.body.gross_total),
+    total: sanitize(req.body.total),
+  };
+
+  let sql = "INSERT INTO sales_order_item SET ?";
+  db.query(sql, data, (err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(500).send({ error: "Database insert failed." });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'New Tender has been created successfully'
+      });
+    }
+  });
+});
+
+
+  app.post('/insertQuoteItemsOld', (req, res, next) => {
     let data = {
       product_id: req.body.product_id,
       sales_order_id: req.body.sales_order_id,
