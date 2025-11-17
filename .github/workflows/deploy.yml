@@ -1,4 +1,4 @@
-name: Auto Deploy Selected API Files to aaPanel
+name: Auto Deploy API to aaPanel
 
 on:
   push:
@@ -11,31 +11,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Source Code
         uses: actions/checkout@v3
 
-      - name: Prepare Deploy Package (Only routes + App.js)
+      # Zip ONLY App.js + routes folder
+      - name: Create Deployment Zip
         run: |
-          mkdir deploy
-          cp App.js deploy/
-          cp -r routes deploy/
+          zip -r api-update.zip App.js routes
 
-          # Create archive
-          cd deploy
-          zip -r api-update.zip . 
-          cd ..
-
-      - name: Upload to aaPanel
+      # Upload zip to server
+      - name: Upload ZIP to aaPanel
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          source: "deploy/api-update.zip"
+          source: "api-update.zip"
           target: "/www/wwwroot/66.29.149.122/amproAdminapi/"
 
-      - name: SSH → Deploy on Server
+      # SSH into server to extract + restart PM2
+      - name: Deploy on Server
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -44,8 +40,13 @@ jobs:
           port: 22
           script: |
             cd /www/wwwroot/66.29.149.122/amproAdminapi/
-            
-            unzip -o api-update.zip
-            rm api-update.zip
 
-            pm2 restart amproAdminapi
+            echo "Unzipping update..."
+            unzip -o api-update.zip
+
+            echo "Cleaning ZIP..."
+            rm -f api-update.zip
+
+            echo "Restarting PM2..."
+            /www/server/nvm/versions/node/v22.16.0/bin/pm2 restart amproAdminapi || \
+            /www/server/nvm/versions/node/v22.16.0/bin/pm2 start App.js --name amproAdminapi
