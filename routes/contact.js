@@ -44,7 +44,58 @@ app.get("/getContacts", (req, res, next) => {
       }
     }
   );
+}); 
+
+app.get("/getContactSubByiD", (req, res, next) => {
+  db.query(
+    `Select s.contact_person_sub_id
+  ,s.contact_id
+  ,s.fax_no
+  ,s.contact_person
+  ,s.handphone_no
+  ,s.designation
+  ,s.email
+  From contact_person_sub s
+  WHERE s.contact_id='${db.escape(req.body.contact_id)}' `,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
 });
+
+app.post("/getContactByContactId", (req, res, next) => {
+  db.query(
+    `Select s.*
+  From contact s
+  WHERE s.company_id=${db.escape(req.body.company_id)} `,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
 
 app.get("/getMobileContacts", (req, res, next) => {
   db.query(
@@ -214,7 +265,7 @@ app.get("/getAddress1", (req, res, next) => {
 });
 
 
-app.get("/getContact", (req, res, next) => {
+app.get("/getContacts", (req, res, next) => {
   db.query(
     `select contact_id
   ,name 
@@ -266,43 +317,110 @@ app.get("/getContact", (req, res, next) => {
   );
 });
 
-app.post('/getContactsById', (req, res, next) => {
-  db.query(`select contact_id
-  ,name 
-  ,company_name
-  ,position
-  ,email
-  ,address2
-  ,address_area
-  ,address_state
-  ,address_country_code
-  ,address_po_code
-  ,phone
-  ,notes
-  ,published
-  ,creation_date
-  ,modification_date
-  ,pass_word
-  ,subscribe
-  ,first_name
-  ,last_name
-  ,mobile
-  ,address
-  ,flag
-  ,random_no
-  ,member_status
-  ,member_type
-  ,address1
-  ,phone_direct
-  ,fax
-  ,activated
-  ,address_city 
-  ,department
-  ,otp_no
-  ,created_by
-  ,modified_by
-  from contact
-  where contact_id =${db.escape(req.body.contact_id)}`,
+app.get('/getContactss', (req, res) => {
+  const { company_name, mobile, is_active } = req.query;
+
+  let query = `
+    SELECT
+      c.*,
+      CASE 
+        WHEN c.is_active = 1 THEN 'Active'
+        ELSE 'Inactive'
+      END AS status_display
+    FROM company c
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (company_name) {
+    query += ' AND (c.company_name LIKE ? OR c.first_name LIKE ?)';
+    params.push(`%${company_name}%`, `%${company_name}%`);
+  }
+
+  if (mobile) {
+    query += ' AND c.mobile LIKE ?';
+    params.push(`%${mobile}%`);
+  }
+
+  if (is_active !== undefined && is_active !== '') {
+    const active = parseInt(is_active, 10);
+    if (active === 1) {
+      query += ' AND c.is_active = 1';
+    } else if (active === 0) {
+      query += ' AND (c.is_active = 0 OR c.is_active IS NULL)';
+    }
+  }
+
+  query += ' ORDER BY c.company_id DESC';
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error('Error fetching contacts:', err);
+      return res.status(500).send({
+        msg: 'Error fetching contacts',
+        data: err,
+        query,
+        params
+      });
+    }
+
+    const processedResults = result.map(contact => ({
+      ...contact,
+      status_display: contact.is_active === 1 ? 'Active' : 'Inactive'
+    }));
+
+    res.status(200).send({
+      msg: 'Success',
+      data: processedResults,
+      total_count: processedResults.length,
+      filtered_count: processedResults.length
+    });
+  });
+});
+
+app.post('/updateContactStatus', (req, res) => {
+  const { company_id, is_active } = req.body;
+
+  // Validate input
+  if (!company_id || typeof is_active === 'undefined') {
+    return res.status(400).send({
+      msg: 'Missing company_id or is_active in request body',
+    });
+  }
+
+  const query = `
+    UPDATE company 
+    SET is_active = ? 
+    WHERE company_id = ?
+  `;
+
+  db.query(query, [is_active, company_id], (err, result) => {
+    if (err) {
+      console.error('Error updating contact status:', err);
+      return res.status(500).send({
+        msg: 'Failed to update contact status',
+        error: err,
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).send({
+        msg: 'Company not found or no change made',
+      });
+    }
+
+    res.status(200).send({
+      msg: 'Company status updated successfully',
+    });
+  });
+});
+
+
+app.post('/getContactssById', (req, res, next) => {
+  db.query(`select c.*
+  from company c
+  where c.company_id =${db.escape(req.body.company_id)}`,
     (err, result) => {
       if (err) {
         console.log('error: ', err)
@@ -459,7 +577,51 @@ app.post('/insertToWishlist', (req, res, next) => {
   });
 });
 
+app.post('/insertToSalesman', (req, res, next) => {
 
+  let data = {company_id	:req.body.company_id	
+   , creation_date: req.body.creation_date
+    , salesman_title: req.body.salesman_title
+   , modification_date: req.body.modification_date
+ };
+  let sql = "INSERT INTO customer_salesmen SET ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+          });
+    }
+  });
+});
+
+app.post('/getSalesmanByCustomerId', (req, res, next) => {
+  db.query(
+    `SELECT b.*
+     FROM customer_salesmen b
+     WHERE b.company_id = ${db.escape(req.body.company_id)}`,
+    (err, result) => {
+      if (err) {
+        console.log('error:', err);
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        });
+      }
+    }
+  );
+});
 
 
 app.post('/insertToCompare', (req, res, next) => {
@@ -633,15 +795,15 @@ app.post('/addToCart', (req, res, next) => {
 
 
 app.post('/editContact', (req, res, next) => {
-  db.query(`UPDATE contact
-            SET name=${db.escape(req.body.name)}
-            ,company_name=${db.escape(req.body.company_name)}
+  db.query(`UPDATE company
+            SET company_name=${db.escape(req.body.company_name)}
             ,position=${db.escape(req.body.position)}
             ,email=${db.escape(req.body.email)}
             ,address2=${db.escape(req.body.address2)}
+            ,address_street=${db.escape(req.body.address_street)}
             ,address_area=${db.escape(req.body.address_area)}
             ,address_state=${db.escape(req.body.address_state)}
-            ,address_country_code=${db.escape(req.body.address_country_code)}
+            ,address_country=${db.escape(req.body.address_country)}
             ,address_po_code=${db.escape(req.body.address_po_code)}
             ,phone=${db.escape(req.body.phone)}
             ,notes=${db.escape(req.body.notes)}
@@ -662,10 +824,26 @@ app.post('/editContact', (req, res, next) => {
             ,address1=${db.escape(req.body.address1)}
             ,phone_direct=${db.escape(req.body.phone_direct)}
             ,fax=${db.escape(req.body.fax)}
+            ,terms=${db.escape(req.body.terms)}
+            ,fax_no=${db.escape(req.body.fax_no)}
+            ,credit_limit=${db.escape(req.body.credit_limit)}
+             ,web_site=${db.escape(req.body.web_site)}
+              ,company_reg_no=${db.escape(req.body.company_reg_no)}
+               ,cheque_print_name=${db.escape(req.body.cheque_print_name)}
+                        ,currency=${db.escape(req.body.currency)}
+                                    ,hand_phone_no=${db.escape(req.body.hand_phone_no)}
+            ,area=${db.escape(req.body.area)}
+            ,country_postal=${db.escape(req.body.country_postal)}
+            ,contact_type=${db.escape(req.body.contact_type)}
+             ,tax_type=${db.escape(req.body.tax_type)}
+             ,price_group=${db.escape(req.body.price_group)}
+             ,remarks=${db.escape(req.body.remarks)}
             ,activated=${db.escape(req.body.activated)}
             ,address_city=${db.escape(req.body.address_city)}
             ,department=${db.escape(req.body.department)}
-            WHERE contact_id=${db.escape(req.body.contact_id)}`,
+             ,hand_phone_no=${db.escape(req.body.hand_phone_no)}
+            ,is_active=${db.escape(req.body.is_active)}
+            WHERE company_id=${db.escape(req.body.company_id)}`,
     (err, result) => {
      
       if (err) {
@@ -703,7 +881,7 @@ app.post('/editContactData', (req, res, next) => {
             WHERE contact_id=${db.escape(req.body.contact_id)}`,
     (err, result) => {
      
-      if (err) {
+      if (err) {``
         console.log('error: ', err)
         return res.status(400).send({
           data: err,
@@ -779,6 +957,7 @@ app.post('/insertContact', (req, res, next) => {
    , company_name	: req.body.company_name	
    , position: req.body.position
    , email: req.body.email
+    , company_id: req.body.company_id
    , address2: req.body.address2
    , address_area	: req.body.address_area
    , address_state	: req.body.address_state
@@ -805,7 +984,19 @@ app.post('/insertContact', (req, res, next) => {
    , activated	: req.body.activated
    , address_city: req.body.address_city
    ,created_by: req.body.created_by
-   , department: req.body.department};
+   ,supplier_id: req.body.supplier_id
+   ,hand_phone_no : req.body.hand_phone_no
+   ,is_active : req.body.is_active
+   ,contact_type : req.body.contact_type
+   ,designation : req.body.designation
+     ,customer_code : req.body.customer_code
+   ,price_group : req.body.price_group
+    ,currency : req.body.currency
+        ,contact_person_sub_id : req.body.contact_person_sub_id
+        ,product_id : req.body.product_id
+        ,employee_id : req.body.employee_id
+        ,transaction_id : req.body.employee_id
+   ,department: req.body.department};
   let sql = "INSERT INTO contact SET ?";
   let query = db.query(sql, data,(err, result) => {
     if (err) {
@@ -823,7 +1014,152 @@ app.post('/insertContact', (req, res, next) => {
   });
 });
 
+
+app.post('/insertShipping', (req, res) => {
+  const {
+     company_id,
+    delivery_name,
+    delivery_address1,
+    delivery_address2,
+    delivery_address3,
+    phone_no,
+    handphone_no,
+    fax_no,
+    email,
+    country_postal,
+    attention,
+    default_load_on_invoice,
+  } = req.body;
+
+  const sql = `INSERT INTO delivery_address (
+    company_id,
+    delivery_name,
+    delivery_address1,
+    delivery_address2,
+    delivery_address3,
+    phone_no,
+    handphone_no,
+    fax_no,
+    email,
+    country_postal,
+    attention,
+    default_load_on_invoice
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+  const params = [
+    company_id,
+    delivery_name,
+    delivery_address1,
+    delivery_address2,
+    delivery_address3,
+    phone_no,
+    handphone_no,
+    fax_no,
+    email,
+    country_postal,
+    attention,
+    default_load_on_invoice,
+  ];
+
+  db.query(sql, params, (err, result) => {
+    if (err) {
+      console.error('Error inserting shipping:', err);
+      return res.status(500).send({ msg: 'Failed to insert shipping' });
+    }
+    res.status(200).send({
+      msg: 'Shipping inserted successfully',
+      data: { insertId: result.insertId },
+    });
+  });
+});
+
+
+
+// POST /contact/insertContactPersonsBatch
+app.post('/contact/insertContactPersonsBatch', (req, res) => {
+    const { contact_id, contact_persons } = req.body;
+
+    if (!contact_id || !Array.isArray(contact_persons) || contact_persons.length === 0) {
+        return res.status(400).send({ msg: 'Contact ID and a non-empty array of contact persons are required.' });
+    }
+
+    // Prepare data for batch insert
+    const values = contact_persons.map(person => [
+        contact_id,
+        person.contact_person,
+        person.email,
+        person.phone_no,
+        person.handphone_no,
+        person.fax_no,
+        person.designation
+        // moment().format('YYYY-MM-DD HH:mm:ss'), // creation_date
+        // moment().format('YYYY-MM-DD HH:mm:ss'), // modification_date
+        // Add any other default or system-generated fields here
+    ]);
+
+    // SQL for batch insert (assuming you have a `contact_person_sub` table)
+    const sql = `INSERT INTO contact_person_sub (
+        contact_id,
+        contact_person,
+        email,
+        phone_no,
+        handphone_no,
+        fax_no,
+        designation,
+    ) VALUES ?`; // The '?' will be replaced by the array of arrays (values)
+
+    db.query(sql, [values], (err, result) => {
+        if (err) {
+            console.error('Error batch inserting contact persons:', err);
+            return res.status(500).send({ data: err, msg: 'Failed to insert contact persons.' });
+        }
+        res.status(200).send({ data: result, msg: 'Contact persons inserted successfully.' });
+    });
+});
+
 app.post('/deleteContact', (req, res, next) => {
+
+  let data = {company_id: req.body.company_id};
+  let sql = "DELETE FROM company WHERE ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+          });
+    }
+  });
+});
+
+
+app.post('/deleteSalesMan', (req, res, next) => {
+
+  let data = {customer_salesmen_id: req.body.customer_salesmen_id};
+  let sql = "DELETE FROM customer_salesmen WHERE ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+          });
+    }
+  });
+});
+
+
+app.post('/deleteContactss', (req, res, next) => {
 
   let data = {contact_id: req.body.contact_id};
   let sql = "DELETE FROM contact WHERE ?";
@@ -842,6 +1178,29 @@ app.post('/deleteContact', (req, res, next) => {
     }
   });
 });
+
+
+
+app.post('/deleteShipping', (req, res, next) => {
+
+  let data = {delivery_address_id: req.body.delivery_address_id};
+  let sql = "DELETE FROM delivery_address  WHERE ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+          });
+    }
+  });
+});
+
 
 app.post('/getUserById', (req, res, next) => {
   db.query(`select address2
@@ -950,6 +1309,26 @@ app.post('/getClientsById', (req, res, next) => {
 
 app.post('/getContactByCompanyId', (req, res, next) => {
   db.query(`SELECT * FROM contact WHERE company_id =${db.escape(req.body.company_id)}`,
+    (err, result) => {
+     
+      if (result.length == 0) {
+        return res.status(400).send({
+          msg: 'No result found'
+        });
+      } else {
+            return res.status(200).send({
+              data: result,
+              msg:'Success'
+            });
+        }
+ 
+    }
+  );
+});
+
+
+app.post('/getShippingByContactId', (req, res, next) => {
+  db.query(`SELECT * FROM delivery_address WHERE company_id =${db.escape(req.body.company_id)}`,
     (err, result) => {
      
       if (result.length == 0) {
@@ -1253,6 +1632,141 @@ app.post("/clearCartItems", (req, res, next) => {
   });
 });
 
+
+
+app.post('/contact/insertContact', (req, res, next) => {
+    let customerData = req.body;
+
+    // Set creation/modification dates and created/modified by
+    // customerData.creation_date = moment().format('YYYY-MM-DD HH:mm:ss');
+    // customerData.modification_date = moment().format('YYYY-MM-DD HH:mm:ss');
+    // For 'created_by' and 'modified_by', you should ideally get this from authenticated user context
+
+    // Remove any fields that should not be directly inserted into 'contact' table
+    // E.g., the 'salesmen' array from the frontend.
+    // Ensure you only insert columns that actually exist in your 'contact' table.
+    const { salesmen, ...coreContactData } = customerData; // Exclude 'salesmen' array
+
+    let sql = 'INSERT INTO contact SET ?';
+    db.query(sql, coreContactData, (err, result) => {
+        if (err) {
+            console.error('Error inserting contact:', err);
+            return res.status(400).send({ data: err, msg: 'Failed to insert contact' });
+        } else {
+            return res.status(200).send({
+                data: result,
+                msg: 'Contact inserted successfully',
+                insertId: result.insertId // Return the ID of the new contact
+            });
+        }
+    });
+});
+
+// 2. Add Salesman to Customer (Association)
+app.post('/customer/addCustomerSalesman', (req, res, next) => {
+    const { contact_id, employee_id } = req.body;
+
+    if (!contact_id || !employee_id) {
+        return res.status(400).send({ msg: 'Contact ID and Employee ID are required' });
+    }
+
+    // Optional: Check if association already exists to prevent duplicates (good practice)
+    db.query(
+        `SELECT * FROM customer_salesmen WHERE contact_id = ? AND employee_id = ?`,
+        [contact_id, employee_id],
+        (err, result) => {
+            if (err) {
+                console.error('Error checking existing salesman association:', err);
+                return res.status(500).send({ data: err, msg: 'Failed to check existing association' });
+            }
+
+            if (result.length > 0) {
+                return res.status(409).send({ msg: 'Salesman already associated with this customer' });
+            }
+
+            // If not exists, proceed with insert
+            let data = {
+                contact_id: contact_id,
+                employee_id: employee_id,
+                creation_date: moment().format('YYYY-MM-DD HH:mm:ss'),
+                modification_date: moment().format('YYYY-MM-DD HH:mm:ss'),
+            };
+
+            let sql = 'INSERT INTO customer_salesmen SET ?';
+            db.query(sql, data, (err, result) => {
+                if (err) {
+                    console.error('Error adding salesman to customer:', err);
+                    return res.status(400).send({ data: err, msg: 'Failed to add salesman to customer' });
+                } else {
+                    return res.status(200).send({
+                        data: result,
+                        msg: 'Salesman added successfully to customer',
+                        customer_salesmen_id: result.insertId
+                    });
+                }
+            });
+        }
+    );
+});
+
+// 3. Get All Salesmen (for dropdown in frontend)
+app.get('/customer/getAllSalesmen', (req, res, next) => {
+    db.query(
+        `SELECT employee_id, employee_name
+         FROM employee ORDER BY employee_name ASC`, // Order for better display
+        (err, result) => {
+            if (err) {
+                console.error('Error fetching salesmen list:', err);
+                return res.status(400).send({ data: err, msg: 'Failed to get salesmen list' });
+            } else {
+                return res.status(200).send({
+                    data: result,
+                    msg: 'Success',
+                });
+            }
+        }
+    );
+});
+
+// You'll also need a DELETE endpoint for salesmen if you manage associations after creation
+app.post('/customer/deleteCustomerSalesman', (req, res, next) => {
+    const { customer_salesmen_id } = req.body;
+
+    if (!customer_salesmen_id) {
+        return res.status(400).send({ msg: 'customer_salesmen_id is required' });
+    }
+
+    let sql = 'DELETE FROM customer_salesmen WHERE customer_salesmen_id = ?';
+    db.query(sql, [customer_salesmen_id], (err, result) => {
+        if (err) {
+            console.error('Error deleting salesman from customer:', err);
+            return res.status(400).send({ data: err, msg: 'Failed to delete salesman from customer' });
+        } else {
+            if (result.affectedRows === 0) {
+                return res.status(404).send({ msg: 'Salesman association not found' });
+            }
+            return res.status(200).send({
+                data: result,
+                msg: 'Salesman deleted successfully from customer',
+            });
+        }
+    });
+}); 
+
+app.post('/updateContactPerson', (req, res) => {
+  const { contact_person, contact_id, fax_no, phone_no, handphone_no,email } = req.body;
+
+  const query = `
+    UPDATE contact_person_sub
+    SET contact_person = ?, designation = ?, contact_id = ?, fax_no = ?, phone_no = ? ,handphone_no = ?,email = ?
+    WHERE contact_person_sub_id = ?
+  `;
+
+  db.query(query, [designation, fax_no, phone_no, contact_person,handphone_no,email], (err, result) => {
+    if (err) return res.status(500).json({ message: 'Error updating UOM' });
+    res.json({ message: 'UOM updated successfully' });
+  });
+});  
 
 
 

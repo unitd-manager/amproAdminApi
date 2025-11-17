@@ -1,0 +1,45 @@
+name: Build and Deploy Static Website
+
+on:
+  push:
+    branches:
+      - main
+ 
+jobs:
+  deploy:
+    if: ${{ github.actor == 'SyedJasmine1991' }}
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: 📦 Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Use Node.js 16.18.0
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.18.0
+
+      - name: Use Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 🔧 Install Dependencies & Build
+        run: |
+          npm install --force
+          npm run build
+
+          # ✅ Move contents from build/ to project root
+          shopt -s dotglob
+          mv build/* . || true
+          mv build/.* . || true
+          rm -rf build
+
+      - name: 📤 Deploy to aaPanel (after move)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "*"
+          target: "/www/wwwroot/amproadmin.zaitunsoftsolutions.com/"

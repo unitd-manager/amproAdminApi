@@ -22,7 +22,6 @@ app.use(
 );
 
 
-
 app.post('/sendemail', (req, res, next) => {
     
 sgMail.setApiKey("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")
@@ -52,6 +51,7 @@ sgMail
   })
  
 });
+
 app.post('/sendUseremailForgetPassword', (req, res, next) => {
     const { to } = req.body;
 
@@ -446,6 +446,11 @@ app.post("/getCodeValue", (req, res, next) => {
   else if(type == 'project'){
       key_text = 'nextProjectCode';
       sql = "SELECT * FROM setting WHERE key_text='projectCodePrefix' OR key_text='nextProjectCode'";  
+  }
+  else if(type == 'customer'){
+      key_text = 'nextCustomerCode';
+      sql = "SELECT * FROM setting WHERE key_text='customerCodePrefix' OR key_text='nextCustomerCode'";  
+     
   }else if(type == 'quote'){
       key_text = 'nextQuoteCode';
       sql = "SELECT * FROM setting WHERE key_text='quoteCodePrefix' OR key_text='nextQuoteCode'";  
@@ -468,6 +473,11 @@ app.post("/getCodeValue", (req, res, next) => {
       key_text = 'nextQuoteCodeOpp';
       sql = "SELECT * FROM setting WHERE  key_text='nextQuoteCodeOpp'";  
   }
+  else if(type == 'SupplierCode'){
+    withprefix = false;
+    key_text = 'nextSupplierCode';
+    sql = "SELECT * FROM setting WHERE key_text='SupplierCodePrefix' OR key_text='nextSupplierCode'";  
+}
   else if(type == 'wocode'){
       key_text = 'nextWOCode';
       sql = "SELECT * FROM setting WHERE key_text='wOCodePrefix' OR key_text='nextWOCode'";  
@@ -537,6 +547,9 @@ else if(type == 'lead'){
   }else if(type == 'invoice'){
       key_text = 'nextInvoiceCode';
     sql = "SELECT * FROM setting WHERE key_text='invoiceCodePrefix' OR key_text='nextInvoiceCode'";  
+  }else if(type == 'salesreturn'){
+      key_text = 'nextSalesReturnCode';
+    sql = "SELECT * FROM setting WHERE key_text='salesreturnCodePrefix' OR key_text='nextSalesReturnCode'";  
   }else if(type == 'delivery'){
       key_text = 'nextDeliveryCode';
     sql = "SELECT * FROM setting WHERE key_text='deliveryCodePrefix' OR key_text='nextDeliveryCode'";  
@@ -545,7 +558,10 @@ else if(type == 'lead'){
       key_text = 'nextSalesOrderCode';
     sql = "SELECT * FROM setting WHERE key_text='salesorderCodePrefix' OR key_text='nextSalesOrderCode'";  
   }
-  else if(type == 'subConworkOrder'){
+  else if(type == 'stockrequest'){
+    key_text = 'nextStockRequestCode';
+    sql = "SELECT * FROM setting WHERE key_text='stockRequestCodePrefix' OR key_text='nextStockRequestCode'";  
+  }else if(type == 'subConworkOrder'){
       key_text = 'nextSubconCode';
     sql = "SELECT * FROM setting WHERE key_text='subconCodePrefix' OR key_text='nextSubconCode'";  
   }
@@ -599,6 +615,17 @@ else if(type == 'lead'){
    else if(type == 'booking'){
       key_text = 'nextBookingCode';
       sql = "SELECT * FROM setting WHERE key_text='bookingOrderCodePrefix' OR key_text='nextBookingCode'";  
+  }
+ else if(type == 'SupplierCode'){
+     
+      key_text = 'nextSupplierCode';
+         sql = "SELECT * FROM setting WHERE key_text='SupplierCodePrefix' OR key_text='nextSupplierCode'";  
+  }
+  else if(type == 'Catalogue'){
+     
+      key_text = 'nextCatalogueCode';
+         sql = "SELECT * FROM setting WHERE key_text='CatalogueCodePrefix' OR key_text='nextCatalogueCode'";  
+
   }
   else if(type == 'invoices'){
      

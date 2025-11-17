@@ -87,43 +87,10 @@ app.post('/getPurchaseOrders', (req, res, next) => {
 
 app.post('/getPurchaseOrderById', (req, res, next) => {
   db.query(`SELECT
-  po.purchase_order_id 
+  po.* 
   ,CONCAT('Purchase from',' ',s.company_name ) AS title
-  ,po.status
-  ,po.supplier_id
-  ,po.priority
-  ,po.notes
-  ,po.purchase_order_date
-  ,po.creation_date
-  ,po.modification_date
-  ,po.created_by
-  ,po.modified_by
-  ,po.follow_up_date
-  ,po.delivery_terms
-  ,po.delivery_date
-  ,po.yr_quote_date
-  ,po.payment_terms
-  ,po.supplier_reference_no
-  ,po.our_reference_no
-  ,po.shipping_address_flat
-  ,po.shipping_address_street
-  ,po.shipping_address_country
-  ,po.shipping_address_po_code
-  ,po.payment_status
-  ,po.supplier_inv_code
-  ,po.gst_percentage
-  ,po.po_code
-  ,po.payment
-  ,po.contact
-  ,po.delivery_to
-  ,po.mobile
-  ,po.project
-  ,po.project_id
-  ,po.shipping_method
-  ,po.purchase_item
-  ,po.currency
-  ,po.priority
   ,s.company_name AS supplier_name
+  ,s.supplier_code
   FROM purchase_order po 
   LEFT JOIN (supplier s) ON (po.supplier_id = s.supplier_id) WHERE po.purchase_order_id = ${db.escape(req.body.purchase_order_id)}`,
   (err, result) => {
@@ -221,6 +188,16 @@ app.post('/editPurchaseOrder', (req, res, next) => {
             ,po_code=${db.escape(req.body.po_code)}
             ,purchase_order_date=${db.escape(req.body.purchase_order_date)}
             ,modification_date=${db.escape(new Date())}
+            ,contact_address1=${db.escape(req.body.contact_address1)}
+            ,contact_address2=${db.escape(req.body.contact_address2)}
+            ,contact_address3=${db.escape(req.body.contact_address3)}
+             ,country=${db.escape(req.body.country)}
+            ,postal_code=${db.escape(req.body.postal_code)}
+            ,remarks=${db.escape(req.body.remarks)}
+            ,req_delivery_date=${db.escape(req.body.req_delivery_date)}
+            ,sub_total=${db.escape(req.body.sub_total)}
+            ,tax_amount=${db.escape(req.body.tax_amount)}
+            ,net_total=${db.escape(req.body.net_total)}
             WHERE purchase_order_id = ${db.escape(req.body.purchase_order_id)}`,
             (err, result) => {
               if (err) {
@@ -238,61 +215,78 @@ app.post('/editPurchaseOrder', (req, res, next) => {
   });
   
 app.post('/insertPurchaseOrder', (req, res, next) => {
+  let data = {
+    po_code: req.body.po_code,
+    site_id: req.body.site_id,
+    supplier_id: req.body.supplier_id,
+    contact_id_supplier: req.body.contact_id_supplier,
+    delivery_terms: req.body.delivery_terms,
+    status: req.body.status,
+    project_id: req.body.project_id,
+    flag: req.body.flag,
+    creation_date: req.body.creation_date,
+    modification_date: req.body.modification_date,
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    supplier_reference_no: req.body.supplier_reference_no,
+    our_reference_no: req.body.our_reference_no,
+    shipping_method: req.body.shipping_method,
+    payment_terms: req.body.payment_terms,
+    delivery_date: req.body.delivery_date,
+    po_date: req.body.po_date,
+    shipping_address_flat: req.body.shipping_address_flat,
+    shipping_address_street: req.body.shipping_address_street,
+    shipping_address_country: req.body.shipping_address_country,
+    shipping_address_po_code: req.body.shipping_address_po_code,
+    expense_id: req.body.expense_id,
+    staff_id: req.body.staff_id,
+    purchase_order_date: req.body.purchase_order_date,
+    payment_status: req.body.payment_status || "Due",
+    title: req.body.title,
+    priority: req.body.priority,
+    follow_up_date: req.body.follow_up_date,
+    notes: req.body.notes,
+    supplier_inv_code: req.body.supplier_inv_code,
+    gst: req.body.gst,
+    gst_percentage: req.body.gst_percentage,
+    delivery_to: req.body.delivery_to,
+    contact: req.body.contact,
+    mobile: req.body.mobile,
+    payment: req.body.payment,
+    project: req.body.project,
+    tran_no: req.body.tran_no,
+    tran_date: req.body.tran_date,
+    contact_address1: req.body.contact_address1,
+    contact_address2: req.body.contact_address2,
+    contact_address3: req.body.contact_address3,
+    country: req.body.country,
+    remarks: req.body.remarks,
+    req_delivery_date: req.body.req_delivery_date,
+    contact_person: req.body.contact_person,
+    supplier_code: req.body.supplier_code,
+    postal_code: req.body.postal_code,
+    sub_total: req.body.sub_total,
+    net_total: req.body.net_total,
+    tax_amount: req.body.tax_amount,
+    yr_quote_date: req.body.yr_quote_date,
+    purchase_item: req.body.purchase_item,
+    currency: req.body.currency,
+    terms_purchase: req.body.terms_purchase
+  };
 
-  let data = {po_code:req.body.po_code
-   , supplier_id: req.body.supplier_id
-   , contact_id_supplier: req.body.contact_id_supplier
-   , delivery_terms: req.body.delivery_terms
-   , status: req.body.status
-   , project_id: req.body.project_id
-   , flag: req.body.flag
-   , creation_date: req.body.creation_date
-   , modification_date: req.body.modification_date
-   , created_by: req.body.created_by
-   , modified_by: req.body.modified_by
-   , supplier_reference_no: req.body.supplier_reference_no
-   , our_reference_no	: req.body.our_reference_no	
-   , shipping_method: req.body.shipping_method
-   , payment_terms: req.body.payment_terms
-   , delivery_date: req.body.delivery_date
-   , po_date: req.body.mr_date
-   , shipping_address_flat: req.body.shipping_address_flat
-   , shipping_address_street: req.body.shipping_address_street
-   , shipping_address_country: req.body.shipping_address_country
-   , shipping_address_po_code: req.body.shipping_address_po_code
-   , expense_id: req.body.expense_id
-   , staff_id: req.body.staff_id
-   , purchase_order_date: req.body.purchase_order_date
-   , payment_status: "Due"
-   , title: req.body.title
-   , priority: req.body.priority
-   , follow_up_date: req.body.follow_up_date
-   , notes: req.body.notes
-   , supplier_inv_code: req.body.supplier_inv_code
-   , gst: req.body.gst
-   , gst_percentage: req.body.gst_percentage
-   , delivery_to: req.body.delivery_to
-   , contact: req.body.contact
-   , mobile: req.body.mobile
-   , payment: req.body.payment
-   , project: req.body.project
-    
- };
   let sql = "INSERT INTO purchase_order SET ?";
-  let query = db.query(sql, data,(err, result) => {
+  let query = db.query(sql, data, (err, result) => {
     if (err) {
-      return res.status(400).send({
-        data: err,
-      });
+      return res.status(400).send({ data: err });
     } else {
       return res.status(200).send({
         data: result,
         msg: "Success",
       });
     }
-  }
-);
+  });
 });
+
 
 app.post('/deletePurchaseOrder', (req, res, next) => {
 
@@ -348,79 +342,112 @@ app.get('/TabPurchaseOrderLineItem', (req, res, next) => {
   }
 );
 });
+
 app.post('/TabPurchaseOrderLineItemById', (req, res, next) => {
-  db.query(`SELECT
-  p.product_code
-  ,p.qty_in_stock
-  ,po.product_id
-  ,po.purchase_order_id
-  ,po.po_product_id
-  ,p.title
-  ,po.item_title
-  ,po.description
-  ,po.amount
-  ,po.selling_price
-  ,po.cost_price
-  ,(po.qty-po.qty_delivered) AS qty_balance
-  ,po.gst
-  ,po.qty
-  ,(po.cost_price*po.qty_delivered) AS actual_value 
-  ,po.price
-  ,po.status
-  ,po.damage_qty
-  ,po.qty_delivered
-  ,i.actual_stock AS stock
-  ,(po.cost_price*po.quantity) AS po_value FROM po_product po
-  LEFT JOIN (product p) ON (po.product_id = p.product_id) 
-  LEFT JOIN (inventory i) ON (i.inventory_id = p.product_id) 
-  WHERE po.purchase_order_id = ${db.escape(req.body.purchase_order_id)}
-  `,
-  (err, result) => {
+  const purchaseOrderId = db.escape(req.body.purchase_order_id);
+  const sql = `
+    SELECT
+      p.product_code,
+      p.qty_in_stock,
+      po.po_product_id,
+      po.purchase_order_id,
+      po.product_id,
+      p.title AS product_name,
+      po.item_title,
+      po.description,
+      po.amount,
+      po.selling_price,
+      po.cost_price,
+      (po.qty - po.qty_delivered) AS qty_balance,
+      po.gst,
+      po.qty,
+      (po.cost_price * po.qty_delivered) AS actual_value,
+      po.price,
+      po.status,
+      po.damage_qty,
+      po.qty_delivered,
+      i.actual_stock AS stock,
+      (po.cost_price * po.quantity) AS po_value,
+      po.quantity,
+      po.unit,
+      po.creation_date,
+      po.modification_date,
+      po.created_by,
+      po.modified_by,
+      po.qty_updated,
+      po.supplier_id,
+      po.brand,
+      po.qty_requested,
+      po.carton_qty,
+      po.loose_qty,
+      po.carton_price,
+      po.gross_total,
+      po.discount,
+      po.total
+
+    FROM po_product po
+    LEFT JOIN product p ON po.product_id = p.product_id 
+    LEFT JOIN inventory i ON i.inventory_id = p.product_id 
+    WHERE po.purchase_order_id = ${purchaseOrderId}
+  `;
+
+  db.query(sql, (err, result) => {
     if (err) {
-      return res.status(400).send({
-        data: err,
-      });
+      return res.status(400).send({ data: err });
     } else {
       return res.status(200).send({
         data: result,
         msg: "Success",
       });
     }
-  }
-);
+  });
 });
 
 app.post('/editTabPurchaseOrderLineItem', (req, res, next) => {
-  db.query(`UPDATE po_product
-            SET description=${db.escape(req.body.description)}
-            ,qty_updated=${db.escape(req.body.qty)}
-            ,amount=${db.escape(req.body.amount)}
-            ,item_title=${db.escape(req.body.item_title)}
-            ,selling_price=${db.escape(req.body.selling_price)}
-            ,cost_price=${db.escape(req.body.cost_price)}
-            ,gst=${db.escape(req.body.gst)}
-            ,product_id=${db.escape(req.body.product_id)}
-            ,unit=${db.escape(req.body.unit)}
-            ,product_id=${db.escape(req.body.product_id)}
-            ,qty=${db.escape(req.body.qty)}
-            ,damage_qty=${db.escape(req.body.damage_qty)}
-            ,qty_delivered=${db.escape(req.body.qty_delivered)}
-            ,status=${db.escape(req.body.status)}
-            WHERE po_product_id = ${db.escape(req.body.po_product_id)}`,
-            (err, result) => {
-              if (err) {
-                return res.status(400).send({
-                  data: err,
-                });
-              } else {
-                return res.status(200).send({
-                  data: result,
-                  msg: "Success",
-                });
-              }
-            }
-          );
-       });
+  const sql = `
+    UPDATE po_product SET
+      description = ${db.escape(req.body.description)},
+      qty_updated = ${db.escape(req.body.qty)},
+      amount = ${db.escape(req.body.amount)},
+      item_title = ${db.escape(req.body.item_title)},
+      selling_price = ${db.escape(req.body.selling_price)},
+      cost_price = ${db.escape(req.body.cost_price)},
+      gst = ${db.escape(req.body.gst)},
+      product_id = ${db.escape(req.body.product_id)},
+      unit = ${db.escape(req.body.unit)},
+      qty = ${db.escape(req.body.qty)},
+      damage_qty = ${db.escape(req.body.damage_qty)},
+      qty_delivered = ${db.escape(req.body.qty_delivered)},
+      status = ${db.escape(req.body.status)},
+      
+      -- Additional fields
+      modification_date = ${db.escape(req.body.modification_date)},
+      modified_by = ${db.escape(req.body.modified_by)},
+      supplier_id = ${db.escape(req.body.supplier_id)},
+      brand = ${db.escape(req.body.brand)},
+      qty_requested = ${db.escape(req.body.qty_requested)},
+      carton_qty = ${db.escape(req.body.carton_qty)},
+      loose_qty = ${db.escape(req.body.loose_qty)},
+      carton_price = ${db.escape(req.body.carton_price)},
+      gross_total = ${db.escape(req.body.gross_total)},
+      discount = ${db.escape(req.body.discount)},
+      total = ${db.escape(req.body.total)}
+      
+    WHERE po_product_id = ${db.escape(req.body.po_product_id)}
+  `;
+
+  db.query(sql, (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: "Success",
+      });
+    }
+  });
+});
+
 
 app.get("/getMaxItemCode", (req, res, next) => {
   db.query(
@@ -467,7 +494,13 @@ app.post('/insertPoProduct', (req, res, next) => {
     , brand: req.body.brand
     , qty_requested: req.body.qty_requested
     , qty_delivered: req.body.qty_delivered
-    , price: req.body.price??0
+    , price: req.body.price??0,
+     carton_qty: req.body.carton_qty ?? 0,
+    loose_qty: req.body.loose_qty ?? 0,
+    carton_price: req.body.carton_price ?? 0,
+    gross_total: req.body.gross_total ?? 0,
+    discount: req.body.discount ?? 0,
+    total: req.body.total ?? 0
     
  };
  console.log(data)
@@ -1079,6 +1112,54 @@ WHERE po.purchase_order_id = ${db.escape(req.body.purchase_order_id)}`,
     }
   );
   });
+  
+  app.post('/editPoProduct', (req, res) => {
+  const data = {
+    purchase_order_id: req.body.purchase_order_id,
+    item_title: req.body.item_title,
+    quantity: req.body.quantity,
+    unit: req.body.unit,
+    amount: req.body.amount,
+    description: req.body.description ?? 'desc',
+    modification_date: new Date(), // updated on edit
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    status: req.body.status,
+    cost_price: req.body.cost_price,
+    selling_price: req.body.selling_price,
+    qty_updated: req.body.qty_updated,
+    qty: req.body.qty,
+    product_id: req.body.product_id,
+    supplier_id: req.body.supplier_id,
+    gst: req.body.gst,
+    damage_qty: req.body.damage_qty,
+    brand: req.body.brand,
+    qty_requested: req.body.qty_requested,
+    qty_delivered: req.body.qty_delivered,
+    price: req.body.price ?? 0,
+    carton_qty: req.body.carton_qty,
+    loose_qty: req.body.loose_qty,
+    carton_price: req.body.carton_price,
+    gross_total: req.body.gross_total,
+    discount: req.body.discount,
+    total: req.body.total
+  };
+
+  const sql = "UPDATE po_product SET ? WHERE po_product_id = ?";
+  const poProductId = req.body.po_product_id;
+
+  db.query(sql, [data, poProductId], (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: "Updated successfully"
+      });
+    }
+  });
+});
+
 
 app.post('/getProjectMaterialUsedByPdf', (req, res, next) => {
     db.query(`SELECT p.project_code
@@ -1445,6 +1526,2900 @@ app.get('/getPurchaseGstReport', (req, res, next) => {
   }
   );
   });
+ // ✅ INSERT API (strict format, mapped fields only)
+app.post('/insertGoodsReceipt', (req, res, next) => {
+  let data = {
+    purchase_order_id: req.body.purchase_order_id,
+    po_code: req.body.po_code,
+    site_id: req.body.site_id,
+    supplier_id: req.body.supplier_id,
+    contact_id_supplier: req.body.contact_id_supplier,
+    delivery_terms: req.body.delivery_terms,
+    status: req.body.status,
+    project_id: req.body.project_id,
+    flag: req.body.flag,
+    creation_date: new Date().toISOString(),
+    modification_date: new Date().toISOString(),
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    supplier_reference_no: req.body.supplier_reference_no,
+    our_reference_no: req.body.our_reference_no,
+    shipping_method: req.body.shipping_method,
+    payment_terms: req.body.payment_terms,
+    delivery_date: req.body.delivery_date,
+    po_date: req.body.po_date,
+    shipping_address_flat: req.body.shipping_address_flat,
+    shipping_address_street: req.body.shipping_address_street,
+    shipping_address_country: req.body.shipping_address_country,
+    shipping_address_po_code: req.body.shipping_address_po_code,
+    expense_id: req.body.expense_id,
+    staff_id: req.body.staff_id,
+    goods_receipt_date: req.body.goods_receipt_date,
+    payment_status: req.body.payment_status,
+    title: req.body.title,
+    priority: req.body.priority,
+    follow_up_date: req.body.follow_up_date,
+    notes: req.body.notes,
+    supplier_inv_code: req.body.supplier_inv_code,
+    gst: req.body.gst,
+    gst_percentage: req.body.gst_percentage,
+    delivery_to: req.body.delivery_to,
+    contact: req.body.contact,
+    mobile: req.body.mobile,
+    payment: req.body.payment,
+    project: req.body.project,
+    tran_no: req.body.tran_no,
+    tran_date: req.body.tran_date,
+    contact_address1: req.body.contact_address1,
+    contact_address2: req.body.contact_address2,
+    contact_address3: req.body.contact_address3,
+    country: req.body.country,
+    remarks: req.body.remarks,
+    req_delivery_date: req.body.req_delivery_date,
+    contact_person: req.body.contact_person,
+    invoice_date: req.body.invoice_date,
+    postal_code: req.body.postal_code,
+    invoice_no: req.body.invoice_no,
+    do_no: req.body.do_no,
+    sub_total: req.body.sub_total,
+    net_total: req.body.net_total
+  };
+
+  db.query('INSERT INTO goods_receipt SET ?', data, (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: "Inserted successfully" });
+  });
+});
+
+// ✅ UPDATE API (strict format, mapped fields only)
+app.post('/editGoodsReceipt', (req, res, next) => {
+  db.query(`
+    UPDATE goods_receipt
+    SET purchase_order_id=${db.escape(req.body.purchase_order_id)},
+        po_code=${db.escape(req.body.po_code)},
+        site_id=${db.escape(req.body.site_id)},
+        supplier_id=${db.escape(req.body.supplier_id)},
+        contact_id_supplier=${db.escape(req.body.contact_id_supplier)},
+        delivery_terms=${db.escape(req.body.delivery_terms)},
+        status=${db.escape(req.body.status)},
+        project_id=${db.escape(req.body.project_id)},
+        flag=${db.escape(req.body.flag)},
+        created_by=${db.escape(req.body.created_by)},
+        modified_by=${db.escape(req.body.modified_by)},
+        supplier_reference_no=${db.escape(req.body.supplier_reference_no)},
+        our_reference_no=${db.escape(req.body.our_reference_no)},
+        shipping_method=${db.escape(req.body.shipping_method)},
+        payment_terms=${db.escape(req.body.payment_terms)},
+        delivery_date=${db.escape(req.body.delivery_date)},
+        po_date=${db.escape(req.body.po_date)},
+        shipping_address_flat=${db.escape(req.body.shipping_address_flat)},
+        shipping_address_street=${db.escape(req.body.shipping_address_street)},
+        shipping_address_country=${db.escape(req.body.shipping_address_country)},
+        shipping_address_po_code=${db.escape(req.body.shipping_address_po_code)},
+        expense_id=${db.escape(req.body.expense_id)},
+        staff_id=${db.escape(req.body.staff_id)},
+        goods_receipt_date=${db.escape(req.body.goods_receipt_date)},
+        payment_status=${db.escape(req.body.payment_status)},
+        title=${db.escape(req.body.title)},
+        priority=${db.escape(req.body.priority)},
+        follow_up_date=${db.escape(req.body.follow_up_date)},
+        notes=${db.escape(req.body.notes)},
+        supplier_inv_code=${db.escape(req.body.supplier_inv_code)},
+        gst=${db.escape(req.body.gst)},
+        gst_percentage=${db.escape(req.body.gst_percentage)},
+        delivery_to=${db.escape(req.body.delivery_to)},
+        contact=${db.escape(req.body.contact)},
+        mobile=${db.escape(req.body.mobile)},
+        payment=${db.escape(req.body.payment)},
+        project=${db.escape(req.body.project)},
+        tran_no=${db.escape(req.body.tran_no)},
+        tran_date=${db.escape(req.body.tran_date)},
+        contact_address1=${db.escape(req.body.contact_address1)},
+        contact_address2=${db.escape(req.body.contact_address2)},
+        contact_address3=${db.escape(req.body.contact_address3)},
+        country=${db.escape(req.body.country)},
+        remarks=${db.escape(req.body.remarks)},
+        req_delivery_date=${db.escape(req.body.req_delivery_date)},
+        contact_person=${db.escape(req.body.contact_person)},
+        invoice_date=${db.escape(req.body.invoice_date)},
+        postal_code=${db.escape(req.body.postal_code)},
+        invoice_no=${db.escape(req.body.invoice_no)},
+        do_no=${db.escape(req.body.do_no)},
+        sub_total=${db.escape(req.body.sub_total)},
+        net_total=${db.escape(req.body.net_total)},
+        modification_date=${db.escape(new Date().toISOString())}
+    WHERE goods_receipt_id = ${db.escape(req.body.goods_receipt_id)}
+  `,
+  (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: "Updated successfully" });
+  });
+});
+
+// ✅ GET ALL API
+app.get('/getAllGoodsReceipts', (req, res, next) => {
+  db.query('SELECT * FROM goods_receipt', (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: 'Fetched successfully' });
+  });
+});
+
+// ✅ GET BY ID API
+app.post('/getGoodsReceiptById', (req, res, next) => {
+  db.query(
+    `SELECT po.* 
+     ,s.supplier_code 
+  FROM goods_receipt po 
+  LEFT JOIN supplier s ON po.supplier_id = s.supplier_id
+    WHERE goods_receipt_id = ${db.escape(req.body.goods_receipt_id)}`,
+    (err, result) => {
+      if (err) return res.status(400).send({ data: err });
+      return res.status(200).send({ data: result[0], msg: 'Fetched successfully' });
+    }
+  );
+});
+
+// ✅ DELETE API
+app.post('/deleteGoodsReceipt', (req, res, next) => {
+  db.query(
+    `DELETE FROM goods_receipt WHERE goods_receipt_id = ${db.escape(req.body.goods_receipt_id)}`,
+    (err, result) => {
+      if (err) return res.status(400).send({ data: err });
+      return res.status(200).send({ data: result, msg: 'Deleted successfully' });
+    }
+  );
+});
+
+ // ✅ INSERT API (strict format, mapped fields only)
+app.post('/insertGoodsReturn', (req, res, next) => {
+  let data = {
+    purchase_order_id: req.body.purchase_order_id,
+    po_code: req.body.po_code,
+    site_id: req.body.site_id,
+    supplier_id: req.body.supplier_id,
+    contact_id_supplier: req.body.contact_id_supplier,
+    delivery_terms: req.body.delivery_terms,
+    status: req.body.status,
+    project_id: req.body.project_id,
+    flag: req.body.flag,
+    creation_date: new Date().toISOString(),
+    modification_date: new Date().toISOString(),
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    supplier_reference_no: req.body.supplier_reference_no,
+    our_reference_no: req.body.our_reference_no,
+    shipping_method: req.body.shipping_method,
+    payment_terms: req.body.payment_terms,
+    delivery_date: req.body.delivery_date,
+    po_date: req.body.po_date,
+    shipping_address_flat: req.body.shipping_address_flat,
+    shipping_address_street: req.body.shipping_address_street,
+    shipping_address_country: req.body.shipping_address_country,
+    shipping_address_po_code: req.body.shipping_address_po_code,
+    expense_id: req.body.expense_id,
+    staff_id: req.body.staff_id,
+    goods_receipt_date: req.body.goods_receipt_date,
+    payment_status: req.body.payment_status,
+    title: req.body.title,
+    priority: req.body.priority,
+    follow_up_date: req.body.follow_up_date,
+    notes: req.body.notes,
+    supplier_inv_code: req.body.supplier_inv_code,
+    gst: req.body.gst,
+    gst_percentage: req.body.gst_percentage,
+    delivery_to: req.body.delivery_to,
+    contact: req.body.contact,
+    mobile: req.body.mobile,
+    payment: req.body.payment,
+    project: req.body.project,
+    tran_no: req.body.tran_no,
+    tran_date: req.body.tran_date,
+    contact_address1: req.body.contact_address1,
+    contact_address2: req.body.contact_address2,
+    contact_address3: req.body.contact_address3,
+    country: req.body.country,
+    remarks: req.body.remarks,
+    req_delivery_date: req.body.req_delivery_date,
+    contact_person: req.body.contact_person,
+    invoice_date: req.body.invoice_date,
+    postal_code: req.body.postal_code,
+    invoice_no: req.body.invoice_no,
+    do_no: req.body.do_no,
+    sub_total: req.body.sub_total,
+    net_total: req.body.net_total
+  };
+
+  db.query('INSERT INTO goods_return SET ?', data, (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: "Inserted successfully" });
+  });
+});
+
+// ✅ UPDATE API (strict format, mapped fields only)
+app.post('/editGoodsReturn', (req, res, next) => {
+  db.query(`
+    UPDATE goods_return
+    SET purchase_order_id=${db.escape(req.body.purchase_order_id)},
+        po_code=${db.escape(req.body.po_code)},
+        site_id=${db.escape(req.body.site_id)},
+        supplier_id=${db.escape(req.body.supplier_id)},
+        contact_id_supplier=${db.escape(req.body.contact_id_supplier)},
+        delivery_terms=${db.escape(req.body.delivery_terms)},
+        status=${db.escape(req.body.status)},
+        project_id=${db.escape(req.body.project_id)},
+        flag=${db.escape(req.body.flag)},
+        created_by=${db.escape(req.body.created_by)},
+        modified_by=${db.escape(req.body.modified_by)},
+        supplier_reference_no=${db.escape(req.body.supplier_reference_no)},
+        our_reference_no=${db.escape(req.body.our_reference_no)},
+        shipping_method=${db.escape(req.body.shipping_method)},
+        payment_terms=${db.escape(req.body.payment_terms)},
+        delivery_date=${db.escape(req.body.delivery_date)},
+        po_date=${db.escape(req.body.po_date)},
+        shipping_address_flat=${db.escape(req.body.shipping_address_flat)},
+        shipping_address_street=${db.escape(req.body.shipping_address_street)},
+        shipping_address_country=${db.escape(req.body.shipping_address_country)},
+        shipping_address_po_code=${db.escape(req.body.shipping_address_po_code)},
+        expense_id=${db.escape(req.body.expense_id)},
+        staff_id=${db.escape(req.body.staff_id)},
+        goods_receipt_date=${db.escape(req.body.goods_receipt_date)},
+        payment_status=${db.escape(req.body.payment_status)},
+        title=${db.escape(req.body.title)},
+        priority=${db.escape(req.body.priority)},
+        follow_up_date=${db.escape(req.body.follow_up_date)},
+        notes=${db.escape(req.body.notes)},
+        supplier_inv_code=${db.escape(req.body.supplier_inv_code)},
+        gst=${db.escape(req.body.gst)},
+        gst_percentage=${db.escape(req.body.gst_percentage)},
+        delivery_to=${db.escape(req.body.delivery_to)},
+        contact=${db.escape(req.body.contact)},
+        mobile=${db.escape(req.body.mobile)},
+        payment=${db.escape(req.body.payment)},
+        project=${db.escape(req.body.project)},
+        tran_no=${db.escape(req.body.tran_no)},
+        tran_date=${db.escape(req.body.tran_date)},
+        contact_address1=${db.escape(req.body.contact_address1)},
+        contact_address2=${db.escape(req.body.contact_address2)},
+        contact_address3=${db.escape(req.body.contact_address3)},
+        country=${db.escape(req.body.country)},
+        remarks=${db.escape(req.body.remarks)},
+        req_delivery_date=${db.escape(req.body.req_delivery_date)},
+        contact_person=${db.escape(req.body.contact_person)},
+        invoice_date=${db.escape(req.body.invoice_date)},
+        postal_code=${db.escape(req.body.postal_code)},
+        invoice_no=${db.escape(req.body.invoice_no)},
+        do_no=${db.escape(req.body.do_no)},
+        sub_total=${db.escape(req.body.sub_total)},
+        net_total=${db.escape(req.body.net_total)},
+        modification_date=${db.escape(new Date().toISOString())}
+    WHERE goods_return_id = ${db.escape(req.body.goods_return_id)}
+  `,
+  (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: "Updated successfully" });
+  });
+});
+
+// ✅ GET ALL API for goods_return
+app.get('/getAllGoodsReturns', (req, res, next) => {
+  db.query('SELECT * FROM goods_return', (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: 'Fetched successfully' });
+  });
+});
+
+// ✅ GET BY ID API for goods_return
+app.post('/getGoodsReturnById', (req, res, next) => {
+  db.query(
+    `SELECT po.*
+     ,s.supplier_code 
+  FROM goods_return po 
+  LEFT JOIN supplier s ON po.supplier_id = s.supplier_id
+    WHERE goods_return_id = ${db.escape(req.body.goods_return_id)}`,
+    (err, result) => {
+      if (err) return res.status(400).send({ data: err });
+      return res.status(200).send({ data: result, msg: 'Fetched successfully' });
+    }
+  );
+});
+
+// ✅ DELETE API for goods_return
+app.post('/deleteGoodsReturn', (req, res, next) => {
+  db.query(
+    `DELETE FROM goods_return WHERE goods_return_id = ${db.escape(req.body.goods_return_id)}`,
+    (err, result) => {
+      if (err) return res.status(400).send({ data: err });
+      return res.status(200).send({ data: result, msg: 'Deleted successfully' });
+    }
+  );
+});
+
+   // ✅ INSERT API (strict format, mapped fields only)
+app.post('/insertPurchaseInvoice', (req, res, next) => {
+  let data = {
+    purchase_order_id: req.body.purchase_order_id,
+    po_code: req.body.po_code,
+    site_id: req.body.site_id,
+    supplier_id: req.body.supplier_id,
+    contact_id_supplier: req.body.contact_id_supplier,
+    delivery_terms: req.body.delivery_terms,
+    status: req.body.status,
+    project_id: req.body.project_id,
+    flag: req.body.flag,
+    creation_date: new Date().toISOString(),
+    modification_date: new Date().toISOString(),
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    supplier_reference_no: req.body.supplier_reference_no,
+    our_reference_no: req.body.our_reference_no,
+    shipping_method: req.body.shipping_method,
+    payment_terms: req.body.payment_terms,
+    delivery_date: req.body.delivery_date,
+    po_date: req.body.po_date,
+    shipping_address_flat: req.body.shipping_address_flat,
+    shipping_address_street: req.body.shipping_address_street,
+    shipping_address_country: req.body.shipping_address_country,
+    shipping_address_po_code: req.body.shipping_address_po_code,
+    expense_id: req.body.expense_id,
+    staff_id: req.body.staff_id,
+    payment_status: req.body.payment_status,
+    title: req.body.title,
+    priority: req.body.priority,
+    follow_up_date: req.body.follow_up_date,
+    notes: req.body.notes,
+    supplier_inv_code: req.body.supplier_inv_code,
+    gst: req.body.gst,
+    gst_percentage: req.body.gst_percentage,
+    delivery_to: req.body.delivery_to,
+    contact: req.body.contact,
+    mobile: req.body.mobile,
+    payment: req.body.payment,
+    project: req.body.project,
+    tran_no: req.body.tran_no,
+    tran_date: req.body.tran_date,
+    contact_address1: req.body.contact_address1,
+    contact_address2: req.body.contact_address2,
+    contact_address3: req.body.contact_address3,
+    country: req.body.country,
+    remarks: req.body.remarks,
+    req_delivery_date: req.body.req_delivery_date,
+    contact_person: req.body.contact_person,
+    invoice_date: req.body.invoice_date,
+    postal_code: req.body.postal_code,
+    invoice_no: req.body.invoice_no,
+    do_no: req.body.do_no,
+    sub_total: req.body.sub_total,
+    net_total: req.body.net_total
+  };
+
+  db.query('INSERT INTO purchase_invoice SET ?', data, (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: "Inserted successfully" });
+  });
+});
+
+// ✅ UPDATE API (strict format, mapped fields only)
+app.post('/editPurchaseInvoice', (req, res, next) => {
+  db.query(`
+    UPDATE purchase_invoice
+    SET purchase_order_id=${db.escape(req.body.purchase_order_id)},
+        po_code=${db.escape(req.body.po_code)},
+        site_id=${db.escape(req.body.site_id)},
+        supplier_id=${db.escape(req.body.supplier_id)},
+        contact_id_supplier=${db.escape(req.body.contact_id_supplier)},
+        delivery_terms=${db.escape(req.body.delivery_terms)},
+        status=${db.escape(req.body.status)},
+        project_id=${db.escape(req.body.project_id)},
+        flag=${db.escape(req.body.flag)},
+        created_by=${db.escape(req.body.created_by)},
+        modified_by=${db.escape(req.body.modified_by)},
+        supplier_reference_no=${db.escape(req.body.supplier_reference_no)},
+        our_reference_no=${db.escape(req.body.our_reference_no)},
+        shipping_method=${db.escape(req.body.shipping_method)},
+        payment_terms=${db.escape(req.body.payment_terms)},
+        delivery_date=${db.escape(req.body.delivery_date)},
+        po_date=${db.escape(req.body.po_date)},
+        shipping_address_flat=${db.escape(req.body.shipping_address_flat)},
+        shipping_address_street=${db.escape(req.body.shipping_address_street)},
+        shipping_address_country=${db.escape(req.body.shipping_address_country)},
+        shipping_address_po_code=${db.escape(req.body.shipping_address_po_code)},
+        expense_id=${db.escape(req.body.expense_id)},
+        staff_id=${db.escape(req.body.staff_id)},
+        payment_status=${db.escape(req.body.payment_status)},
+        title=${db.escape(req.body.title)},
+        priority=${db.escape(req.body.priority)},
+        follow_up_date=${db.escape(req.body.follow_up_date)},
+        notes=${db.escape(req.body.notes)},
+        supplier_inv_code=${db.escape(req.body.supplier_inv_code)},
+        gst=${db.escape(req.body.gst)},
+        gst_percentage=${db.escape(req.body.gst_percentage)},
+        delivery_to=${db.escape(req.body.delivery_to)},
+        contact=${db.escape(req.body.contact)},
+        mobile=${db.escape(req.body.mobile)},
+        payment=${db.escape(req.body.payment)},
+        project=${db.escape(req.body.project)},
+        tran_no=${db.escape(req.body.tran_no)},
+        tran_date=${db.escape(req.body.tran_date)},
+        contact_address1=${db.escape(req.body.contact_address1)},
+        contact_address2=${db.escape(req.body.contact_address2)},
+        contact_address3=${db.escape(req.body.contact_address3)},
+        country=${db.escape(req.body.country)},
+        remarks=${db.escape(req.body.remarks)},
+        req_delivery_date=${db.escape(req.body.req_delivery_date)},
+        contact_person=${db.escape(req.body.contact_person)},
+        invoice_date=${db.escape(req.body.invoice_date)},
+        postal_code=${db.escape(req.body.postal_code)},
+        invoice_no=${db.escape(req.body.invoice_no)},
+        do_no=${db.escape(req.body.do_no)},
+        sub_total=${db.escape(req.body.sub_total)},
+        net_total=${db.escape(req.body.net_total)},
+        modification_date=${db.escape(new Date().toISOString())}
+    WHERE purchase_invoice_id = ${db.escape(req.body.purchase_invoice_id)}
+  `,
+  (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: "Updated successfully" });
+  });
+});
+
+// ✅ GET ALL API for goods_return
+app.get('/getAllPurchaseInvoice', (req, res, next) => {
+  db.query('SELECT * FROM purchase_invoice', (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: 'Fetched successfully' });
+  });
+});
+
+// ✅ GET BY ID API for goods_return
+app.post('/getPurchaseInvoiceById', (req, res, next) => {
+  db.query(
+    `SELECT po.*
+     ,s.supplier_code 
+  FROM purchase_invoice po 
+  LEFT JOIN supplier s ON po.supplier_id = s.supplier_id
+    WHERE purchase_invoice_id = ${db.escape(req.body.purchase_invoice_id)}`,
+    (err, result) => {
+      if (err) return res.status(400).send({ data: err });
+      return res.status(200).send({ data: result, msg: 'Fetched successfully' });
+    }
+  );
+});
+
+// ✅ DELETE API for goods_return
+app.post('/deletePurchaseInvoice', (req, res, next) => {
+  db.query(
+    `DELETE FROM purchase_invoice WHERE purchase_invoice_id = ${db.escape(req.body.purchase_invoice_id)}`,
+    (err, result) => {
+      if (err) return res.status(400).send({ data: err });
+      return res.status(200).send({ data: result, msg: 'Deleted successfully' });
+    }
+  );
+});
+
+
+   // ✅ INSERT API (strict format, mapped fields only)
+app.post('/insertPurchaseDebitNote', (req, res, next) => {
+  let data = {
+    purchase_order_id: req.body.purchase_order_id,
+    po_code: req.body.po_code,
+    site_id: req.body.site_id,
+    supplier_id: req.body.supplier_id,
+    contact_id_supplier: req.body.contact_id_supplier,
+    delivery_terms: req.body.delivery_terms,
+    status: req.body.status,
+    project_id: req.body.project_id,
+    flag: req.body.flag,
+    creation_date: new Date().toISOString(),
+    modification_date: new Date().toISOString(),
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    supplier_reference_no: req.body.supplier_reference_no,
+    our_reference_no: req.body.our_reference_no,
+    shipping_method: req.body.shipping_method,
+    payment_terms: req.body.payment_terms,
+    delivery_date: req.body.delivery_date,
+    po_date: req.body.po_date,
+    shipping_address_flat: req.body.shipping_address_flat,
+    shipping_address_street: req.body.shipping_address_street,
+    shipping_address_country: req.body.shipping_address_country,
+    shipping_address_po_code: req.body.shipping_address_po_code,
+    expense_id: req.body.expense_id,
+    staff_id: req.body.staff_id,
+    goods_receipt_date: req.body.goods_receipt_date,
+    payment_status: req.body.payment_status,
+    title: req.body.title,
+    priority: req.body.priority,
+    follow_up_date: req.body.follow_up_date,
+    notes: req.body.notes,
+    supplier_inv_code: req.body.supplier_inv_code,
+    gst: req.body.gst,
+    gst_percentage: req.body.gst_percentage,
+    delivery_to: req.body.delivery_to,
+    contact: req.body.contact,
+    mobile: req.body.mobile,
+    payment: req.body.payment,
+    project: req.body.project,
+    tran_no: req.body.tran_no,
+    tran_date: req.body.tran_date,
+    contact_address1: req.body.contact_address1,
+    contact_address2: req.body.contact_address2,
+    contact_address3: req.body.contact_address3,
+    country: req.body.country,
+    remarks: req.body.remarks,
+    req_delivery_date: req.body.req_delivery_date,
+    contact_person: req.body.contact_person,
+    invoice_date: req.body.invoice_date,
+    postal_code: req.body.postal_code,
+    invoice_no: req.body.invoice_no,
+    do_no: req.body.do_no,
+    sub_total: req.body.sub_total,
+    net_total: req.body.net_total
+  };
+
+  db.query('INSERT INTO purchase_debit_note SET ?', data, (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: "Inserted successfully" });
+  });
+});
+
+// ✅ UPDATE API (strict format, mapped fields only)
+app.post('/editPurchaseDebitNote', (req, res, next) => {
+  db.query(`
+    UPDATE purchase_debit_note
+    SET purchase_order_id=${db.escape(req.body.purchase_order_id)},
+        po_code=${db.escape(req.body.po_code)},
+        site_id=${db.escape(req.body.site_id)},
+        supplier_id=${db.escape(req.body.supplier_id)},
+        contact_id_supplier=${db.escape(req.body.contact_id_supplier)},
+        delivery_terms=${db.escape(req.body.delivery_terms)},
+        status=${db.escape(req.body.status)},
+        project_id=${db.escape(req.body.project_id)},
+        flag=${db.escape(req.body.flag)},
+        created_by=${db.escape(req.body.created_by)},
+        modified_by=${db.escape(req.body.modified_by)},
+        supplier_reference_no=${db.escape(req.body.supplier_reference_no)},
+        our_reference_no=${db.escape(req.body.our_reference_no)},
+        shipping_method=${db.escape(req.body.shipping_method)},
+        payment_terms=${db.escape(req.body.payment_terms)},
+        delivery_date=${db.escape(req.body.delivery_date)},
+        po_date=${db.escape(req.body.po_date)},
+        shipping_address_flat=${db.escape(req.body.shipping_address_flat)},
+        shipping_address_street=${db.escape(req.body.shipping_address_street)},
+        shipping_address_country=${db.escape(req.body.shipping_address_country)},
+        shipping_address_po_code=${db.escape(req.body.shipping_address_po_code)},
+        expense_id=${db.escape(req.body.expense_id)},
+        staff_id=${db.escape(req.body.staff_id)},
+        goods_receipt_date=${db.escape(req.body.goods_receipt_date)},
+        payment_status=${db.escape(req.body.payment_status)},
+        title=${db.escape(req.body.title)},
+        priority=${db.escape(req.body.priority)},
+        follow_up_date=${db.escape(req.body.follow_up_date)},
+        notes=${db.escape(req.body.notes)},
+        supplier_inv_code=${db.escape(req.body.supplier_inv_code)},
+        gst=${db.escape(req.body.gst)},
+        gst_percentage=${db.escape(req.body.gst_percentage)},
+        delivery_to=${db.escape(req.body.delivery_to)},
+        contact=${db.escape(req.body.contact)},
+        mobile=${db.escape(req.body.mobile)},
+        payment=${db.escape(req.body.payment)},
+        project=${db.escape(req.body.project)},
+        tran_no=${db.escape(req.body.tran_no)},
+        tran_date=${db.escape(req.body.tran_date)},
+        contact_address1=${db.escape(req.body.contact_address1)},
+        contact_address2=${db.escape(req.body.contact_address2)},
+        contact_address3=${db.escape(req.body.contact_address3)},
+        country=${db.escape(req.body.country)},
+        remarks=${db.escape(req.body.remarks)},
+        req_delivery_date=${db.escape(req.body.req_delivery_date)},
+        contact_person=${db.escape(req.body.contact_person)},
+        invoice_date=${db.escape(req.body.invoice_date)},
+        postal_code=${db.escape(req.body.postal_code)},
+        invoice_no=${db.escape(req.body.invoice_no)},
+        do_no=${db.escape(req.body.do_no)},
+        sub_total=${db.escape(req.body.sub_total)},
+        net_total=${db.escape(req.body.net_total)},
+        modification_date=${db.escape(new Date().toISOString())}
+    WHERE purchase_debit_note_id = ${db.escape(req.body.purchase_debit_note_id)}
+  `,
+  (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: "Updated successfully" });
+  });
+});
+
+// ✅ GET ALL API for goods_return
+app.get('/getAllPurchaseDebitNote', (req, res, next) => {
+  db.query('SELECT * FROM purchase_debit_note', (err, result) => {
+    if (err) return res.status(400).send({ data: err });
+    return res.status(200).send({ data: result, msg: 'Fetched successfully' });
+  });
+});
+
+// ✅ GET BY ID API for goods_return
+app.post('/getPurchaseDebitNoteById', (req, res, next) => {
+  db.query(
+    `SELECT po.*
+     ,s.supplier_code 
+  FROM purchase_debit_note po 
+  LEFT JOIN supplier s ON po.supplier_id = s.supplier_id
+    WHERE purchase_debit_note_id = ${db.escape(req.body.purchase_debit_note_id)}`,
+    (err, result) => {
+      if (err) return res.status(400).send({ data: err });
+      return res.status(200).send({ data: result, msg: 'Fetched successfully' });
+    }
+  );
+});
+
+// ✅ DELETE API for goods_return
+app.post('/deletePurchaseDebitNote', (req, res, next) => {
+  db.query(
+    `DELETE FROM purchase_debit_note WHERE purchase_debit_note_id = ${db.escape(req.body.purchase_debit_note_id)}`,
+    (err, result) => {
+      if (err) return res.status(400).send({ data: err });
+      return res.status(200).send({ data: result, msg: 'Deleted successfully' });
+    }
+  );
+});
+  
+  
+  app.post('/insertGrProduct', (req, res, next) => {
+  let data = {
+    goods_receipt_id: req.body.goods_receipt_id,
+    purchase_order_id: req.body.purchase_order_id,
+    item_title: req.body.item_title,
+    quantity: req.body.quantity,
+    unit: req.body.unit,
+    amount: req.body.amount,
+    description: req.body.description ?? '',
+    creation_date: new Date().toISOString(),
+    modification_date: new Date().toISOString(),
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    status: req.body.status,
+    cost_price: req.body.cost_price,
+    selling_price: req.body.selling_price,
+    qty_updated: req.body.qty_updated,
+    qty: req.body.qty,
+    product_id: req.body.product_id,
+    supplier_id: req.body.supplier_id,
+    gst: req.body.gst,
+    damage_qty: req.body.damage_qty,
+    brand: req.body.brand,
+    qty_requested: req.body.qty_requested,
+    qty_delivered: req.body.qty_delivered,
+    price: req.body.price,
+    carton_qty: req.body.carton_qty,
+    loose_qty: req.body.loose_qty,
+    carton_price: req.body.carton_price,
+    gross_total: req.body.gross_total,
+    discount: req.body.discount,
+    total: req.body.total
+  };
+
+  db.query('INSERT INTO gr_product SET ?', data, (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.post('/editGrProduct', (req, res, next) => {
+  db.query(`
+    UPDATE gr_product
+    SET description=${db.escape(req.body.description)},
+        qty_updated=${db.escape(req.body.qty_updated)},
+        amount=${db.escape(req.body.amount)},
+        item_title=${db.escape(req.body.item_title)},
+        selling_price=${db.escape(req.body.selling_price)},
+        cost_price=${db.escape(req.body.cost_price)},
+        gst=${db.escape(req.body.gst)},
+        product_id=${db.escape(req.body.product_id)},
+        unit=${db.escape(req.body.unit)},
+        qty=${db.escape(req.body.qty)},
+        damage_qty=${db.escape(req.body.damage_qty)},
+        qty_delivered=${db.escape(req.body.qty_delivered)},
+        status=${db.escape(req.body.status)},
+        qty_requested=${db.escape(req.body.qty_requested)},
+        carton_qty=${db.escape(req.body.carton_qty)},
+        loose_qty=${db.escape(req.body.loose_qty)},
+        carton_price=${db.escape(req.body.carton_price)},
+        gross_total=${db.escape(req.body.gross_total)},
+        discount=${db.escape(req.body.discount)},
+        total=${db.escape(req.body.total)},
+        brand=${db.escape(req.body.brand)},
+        modification_date=${db.escape(new Date().toISOString())},
+        modified_by=${db.escape(req.body.modified_by)}
+    WHERE gr_product_id = ${db.escape(req.body.gr_product_id)}
+  `,
+  (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.get('/getAllGrProducts', (req, res, next) => {
+  db.query('SELECT * FROM gr_product', (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.post('/getGrProductByGoodsReceiptId', (req, res, next) => {
+  db.query(
+    `SELECT 
+      gr.*,
+      p.title AS product_name,
+      p.product_code
+    FROM gr_product gr
+    LEFT JOIN product p ON gr.product_id = p.product_id
+    WHERE gr.goods_receipt_id = ${db.escape(req.body.goods_receipt_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+});
+
+
+
+app.post('/ConvertToPurchaseInvoice', (req, res, next) => {
+  const ids = req.body.goods_receipt_ids; // Array of selected goods_receipt_ids
+  const created_by = req.body.created_by;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).send({ msg: 'No records selected' });
+  }
+
+  let results = [];
+
+  // Process each ID
+  const processNext = (i) => {
+    if (i >= ids.length) {
+      return res.status(200).send({ data: results, msg: 'All converted successfully' });
+    }
+
+    const id = ids[i];
+    db.query(`SELECT * FROM goods_receipt WHERE goods_receipt_id = ${db.escape(id)}`, (err, grResult) => {
+      if (err || grResult.length === 0) {
+        results.push({ id, status: 'failed', error: err || 'Not found' });
+        return processNext(i + 1);
+      }
+
+      const gr = grResult[0];
+
+      const invoiceData = {
+        supplier_id: gr.supplier_id,
+        goods_receipt_id: gr.goods_receipt_id,
+        po_code: gr.po_code,
+        tran_date: new Date().toISOString(),
+        creation_date: new Date().toISOString(),
+        created_by: created_by,
+        sub_total: gr.sub_total,
+        net_total: gr.net_total,
+        gst: gr.gst,
+        // Add additional fields if needed
+      };
+
+      db.query('INSERT INTO purchase_invoice SET ?', invoiceData, (err2, result2) => {
+        if (err2) {
+          results.push({ id, status: 'failed', error: err2 });
+        } else {
+          results.push({ id, status: 'success', insertId: result2.insertId });
+        }
+        processNext(i + 1);
+      });
+    });
+  };
+
+  processNext(0);
+});
+
+app.post('/RepeatGoodsReceipt', (req, res, next) => {
+  const ids = req.body.goods_receipt_ids;
+  const created_by = req.body.created_by;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).send({ msg: 'No records selected' });
+  }
+
+  let results = [];
+
+  const repeatNext = (i) => {
+    if (i >= ids.length) {
+      return res.status(200).send({ data: results, msg: 'All repeated successfully' });
+    }
+
+    const id = ids[i];
+
+    db.query(`SELECT * FROM goods_receipt WHERE goods_receipt_id = ${db.escape(id)}`, (err, grResult) => {
+      if (err || grResult.length === 0) {
+        results.push({ id, status: 'failed', error: err || 'Not found' });
+        return repeatNext(i + 1);
+      }
+
+      const gr = grResult[0];
+      delete gr.goods_receipt_id;
+
+      gr.creation_date = new Date().toISOString();
+      gr.modification_date = new Date().toISOString();
+      gr.created_by = created_by;
+      gr.modified_by = created_by;
+
+      db.query('INSERT INTO goods_receipt SET ?', gr, (err2, result2) => {
+        if (err2) {
+          results.push({ id, status: 'failed', error: err2 });
+        } else {
+          results.push({ id, status: 'success', new_goods_receipt_id: result2.insertId });
+        }
+        repeatNext(i + 1);
+      });
+    });
+  };
+
+  repeatNext(0);
+});
+
+
+app.post('/deleteGrProduct', (req, res, next) => {
+  db.query(
+    `DELETE FROM gr_product WHERE gr_product_id = ${db.escape(req.body.gr_product_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Deleted Successfully' });
+      }
+    }
+  );
+});
+
+  app.post('/insertGoodsReturnProduct', (req, res, next) => {
+  let data = {
+    goods_return_id: req.body.goods_return_id,
+    purchase_order_id: req.body.purchase_order_id,
+    item_title: req.body.item_title,
+    quantity: req.body.quantity,
+    unit: req.body.unit,
+    amount: req.body.amount,
+    description: req.body.description ?? '',
+    creation_date: new Date().toISOString(),
+    modification_date: new Date().toISOString(),
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    status: req.body.status,
+    cost_price: req.body.cost_price,
+    selling_price: req.body.selling_price,
+    qty_updated: req.body.qty_updated,
+    qty: req.body.qty,
+    product_id: req.body.product_id,
+    supplier_id: req.body.supplier_id,
+    gst: req.body.gst,
+    damage_qty: req.body.damage_qty,
+    brand: req.body.brand,
+    qty_requested: req.body.qty_requested,
+    qty_delivered: req.body.qty_delivered,
+    price: req.body.price,
+    carton_qty: req.body.carton_qty,
+    loose_qty: req.body.loose_qty,
+    carton_price: req.body.carton_price,
+    gross_total: req.body.gross_total,
+    discount: req.body.discount,
+    total: req.body.total
+  };
+
+  db.query('INSERT INTO goods_return_product SET ?', data, (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.post('/editGoodsReturnProduct', (req, res, next) => {
+  db.query(`
+    UPDATE goods_return_product
+    SET description=${db.escape(req.body.description)},
+        qty_updated=${db.escape(req.body.qty_updated)},
+        amount=${db.escape(req.body.amount)},
+        item_title=${db.escape(req.body.item_title)},
+        selling_price=${db.escape(req.body.selling_price)},
+        cost_price=${db.escape(req.body.cost_price)},
+        gst=${db.escape(req.body.gst)},
+        product_id=${db.escape(req.body.product_id)},
+        unit=${db.escape(req.body.unit)},
+        qty=${db.escape(req.body.qty)},
+        damage_qty=${db.escape(req.body.damage_qty)},
+        qty_delivered=${db.escape(req.body.qty_delivered)},
+        status=${db.escape(req.body.status)},
+        qty_requested=${db.escape(req.body.qty_requested)},
+        carton_qty=${db.escape(req.body.carton_qty)},
+        loose_qty=${db.escape(req.body.loose_qty)},
+        carton_price=${db.escape(req.body.carton_price)},
+        gross_total=${db.escape(req.body.gross_total)},
+        discount=${db.escape(req.body.discount)},
+        total=${db.escape(req.body.total)},
+        brand=${db.escape(req.body.brand)},
+        modification_date=${db.escape(new Date().toISOString())},
+        modified_by=${db.escape(req.body.modified_by)}
+    WHERE goods_return_product_id = ${db.escape(req.body.goods_return_product_id)}
+  `,
+  (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.get('/getAllGoodsReturnProducts', (req, res, next) => {
+  db.query('SELECT * FROM goods_return_product', (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.post('/getGoodsReturnProductByGoodsReturnId', (req, res, next) => {
+  db.query(
+    `SELECT 
+      gr.*,
+      p.title AS product_name,
+      p.product_code
+    FROM goods_return_product gr
+    LEFT JOIN product p ON gr.product_id = p.product_id WHERE gr.goods_return_id = ${db.escape(req.body.goods_return_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+});
+
+app.post('/deleteGoodsReturnProduct', (req, res, next) => {
+  db.query(
+    `DELETE FROM goods_return_product WHERE goods_return_product_id = ${db.escape(req.body.goods_return_product_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Deleted Successfully' });
+      }
+    }
+  );
+});
+
+app.post('/convertToDebitNote', async (req, res) => {
+  const { goods_return_ids } = req.body;
+  if (!goods_return_ids || !Array.isArray(goods_return_ids)) {
+    return res.status(400).json({ message: "tran_nos must be an array" });
+  }
+
+  try {
+    for (let goods_return_id of goods_return_ids) {
+      // Fetch original data
+      const [rows] = await db.query("SELECT * FROM goods_return WHERE goods_return_id = ?", [goods_return_id]);
+      if (rows.length === 0) continue;
+
+      const original = rows[0];
+
+      // Insert into debit_note table
+      await db.query(`
+        INSERT INTO purchase_debit_note (tran_date, supplier_id, amount, created_by, reference)
+        VALUES (?, ?, ?, ?, ?)`,
+        [original.tran_date, original.supplier_id, original.amount, original.created_by, tran_no]
+      );
+    }
+
+    res.json({ message: "Successfully converted to debit notes." });
+  } catch (err) {
+    console.error("Error converting:", err);
+    res.status(500).json({ message: "Server error while converting." });
+  }
+});
+
+app.post('/repeatGoodsReturn', async (req, res) => {
+  const { tran_no } = req.body;
+  if (!tran_no) {
+    return res.status(400).json({ message: "tran_no is required" });
+  }
+
+  try {
+    // Fetch original data
+    const [rows] = await db.query("SELECT * FROM goods_return WHERE tran_no = ?", [tran_no]);
+    if (rows.length === 0) return res.status(404).json({ message: "Goods return not found" });
+
+    const original = rows[0];
+
+    // Generate new tran_no (e.g., GR-newTimestamp)
+    const newTranNo = `GR${Date.now()}`;
+
+    // Insert new record
+    await db.query(`
+      INSERT INTO goods_return (tran_no, tran_date, supplier_id, amount, created_by)
+      VALUES (?, ?, ?, ?, ?)`,
+      [newTranNo, original.tran_date, original.supplier_id, original.amount, original.created_by]
+    );
+
+    res.json({ message: "Goods return repeated successfully.", new_tran_no: newTranNo });
+  } catch (err) {
+    console.error("Error repeating goods return:", err);
+    res.status(500).json({ message: "Server error while repeating." });
+  }
+});
+
+app.get('/getFilteredGoodsReceipt', (req, res) => {
+  const {
+    tran_no,
+    from_date,
+    to_date,
+    status,
+    supplier_id,
+    invoice_no,
+  } = req.query;
+
+  let query = `
+    SELECT gr.*, s.company_name 
+    FROM goods_receipt gr 
+    LEFT JOIN supplier s ON gr.supplier_id = s.supplier_id 
+    WHERE 1=1
+  `;
+  const values = [];
+
+  if (tran_no && tran_no.trim()) {
+    query += ` AND gr.tran_no = ?`;
+    values.push(tran_no.trim());
+  }
+
+  if (from_date && from_date.trim()) {
+    query += ` AND gr.tran_date >= ?`;
+    values.push(from_date.trim());
+  }
+
+  if (to_date && to_date.trim()) {
+    query += ` AND gr.tran_date <= ?`;
+    values.push(to_date.trim());
+  }
+
+  if (status && status.trim()) {
+    query += ` AND gr.status = ?`;
+    values.push(status.trim());
+  }
+
+  if (supplier_id && supplier_id.trim()) {
+    query += ` AND gr.supplier_id = ?`;
+    values.push(supplier_id.trim());
+  }
+
+  if (invoice_no && invoice_no.trim()) {
+    query += ` AND gr.invoice_no LIKE ?`;
+    values.push(`%${invoice_no.trim()}%`);
+  }
+
+  console.log('SQL Query:', query, 'Values:', values); // For debugging
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      return res.status(500).json({ msg: 'DB Error', error: err });
+    }
+    res.status(200).json({ msg: 'Success', data: result, total: result.length });
+  });
+});
+
+
+app.get('/getFilteredPurchaseOrder', (req, res) => {
+  const {
+    tran_no,
+    from_date,
+    to_date,
+    status,
+    supplier_id,
+    page,
+    limit 
+  } = req.query;
+
+  const offset = (page - 1) * limit;
+
+  let baseQuery = `
+    FROM purchase_order gr
+    LEFT JOIN supplier s ON gr.supplier_id = s.supplier_id
+    WHERE 1=1
+  `;
+  const values = [];
+
+  if (tran_no && tran_no.trim()) {
+    baseQuery += ` AND gr.tran_no = ?`;
+    values.push(tran_no.trim());
+  }
+
+  if (from_date && from_date.trim()) {
+    baseQuery += ` AND gr.tran_date >= ?`;
+    values.push(from_date.trim());
+  }
+
+  if (to_date && to_date.trim()) {
+    baseQuery += ` AND gr.tran_date <= ?`;
+    values.push(to_date.trim());
+  }
+
+  if (status && status.trim()) {
+    baseQuery += ` AND gr.status = ?`;
+    values.push(status.trim());
+  }
+
+  if (supplier_id && supplier_id.trim()) {
+    baseQuery += ` AND gr.supplier_id = ?`;
+    values.push(supplier_id.trim());
+  }
+
+  // Query for total count
+  const countQuery = `SELECT COUNT(*) AS total ${baseQuery}`;
+
+  // Query for paginated data
+  const dataQuery = `
+    SELECT gr.*, s.company_name 
+    ${baseQuery}
+    ORDER BY gr.tran_date DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  db.query(countQuery, values, (err, countResult) => {
+    if (err) {
+      console.error('Count Query Error:', err);
+      return res.status(500).json({ msg: 'DB Error (count)', error: err });
+    }
+
+    const total = countResult[0]?.total || 0;
+
+    // Add limit and offset to values array
+    const dataValues = [...values, parseInt(limit), parseInt(offset)];
+
+    db.query(dataQuery, dataValues, (err, dataResult) => {
+      if (err) {
+        console.error('Data Query Error:', err);
+        return res.status(500).json({ msg: 'DB Error (data)', error: err });
+      }
+
+      res.status(200).json({
+        msg: 'Success',
+        data: dataResult,
+        total,
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+      });
+    });
+  });
+});
+
+
+app.get('/getFilteredGoodsReturn', (req, res) => {
+  const {
+    tran_no,
+    from_date,
+    to_date,
+    status,
+    supplier_id,
+    invoice_no,
+  } = req.query;
+
+  let query = `
+    SELECT gr.*, s.company_name 
+    FROM goods_return gr 
+    LEFT JOIN supplier s ON gr.supplier_id = s.supplier_id 
+    WHERE 1=1
+  `;
+  const values = [];
+
+  if (tran_no && tran_no.trim()) {
+    query += ` AND gr.tran_no = ?`;
+    values.push(tran_no.trim());
+  }
+
+  if (from_date && from_date.trim()) {
+    query += ` AND gr.tran_date >= ?`;
+    values.push(from_date.trim());
+  }
+
+  if (to_date && to_date.trim()) {
+    query += ` AND gr.tran_date <= ?`;
+    values.push(to_date.trim());
+  }
+
+  if (status && status.trim()) {
+    query += ` AND gr.status = ?`;
+    values.push(status.trim());
+  }
+
+  if (supplier_id && supplier_id.trim()) {
+    query += ` AND gr.supplier_id = ?`;
+    values.push(supplier_id.trim());
+  }
+
+  if (invoice_no && invoice_no.trim()) {
+    query += ` AND gr.invoice_no LIKE ?`;
+    values.push(`%${invoice_no.trim()}%`);
+  }
+
+  console.log('SQL Query:', query, 'Values:', values); // For debugging
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      return res.status(500).json({ msg: 'DB Error', error: err });
+    }
+    res.status(200).json({ msg: 'Success', data: result, total: result.length });
+  });
+});
+
+
+app.get('/getFilteredPurchaseInvoice', (req, res) => {
+  const {
+    tran_no,
+    from_date,
+    to_date,
+    status,
+    supplier_id
+  } = req.query;
+
+  let query = `
+    SELECT gr.*, s.company_name 
+    FROM purchase_invoice gr 
+    LEFT JOIN supplier s ON gr.supplier_id = s.supplier_id 
+    WHERE 1=1
+  `;
+  const values = [];
+
+  if (tran_no && tran_no.trim()) {
+    query += ` AND gr.tran_no = ?`;
+    values.push(tran_no.trim());
+  }
+
+  if (from_date && from_date.trim()) {
+    query += ` AND gr.tran_date >= ?`;
+    values.push(from_date.trim());
+  }
+
+  if (to_date && to_date.trim()) {
+    query += ` AND gr.tran_date <= ?`;
+    values.push(to_date.trim());
+  }
+
+  if (status && status.trim()) {
+    query += ` AND gr.status = ?`;
+    values.push(status.trim());
+  }
+
+  if (supplier_id && supplier_id.trim()) {
+    query += ` AND gr.supplier_id = ?`;
+    values.push(supplier_id.trim());
+  }
+
+
+  console.log('SQL Query:', query, 'Values:', values); // For debugging
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      return res.status(500).json({ msg: 'DB Error', error: err });
+    }
+    res.status(200).json({ msg: 'Success', data: result, total: result.length });
+  });
+});
+
+
+app.get('/getFilteredPurchaseDebitNote', (req, res) => {
+  const {
+    tran_no,
+    from_date,
+    to_date,
+    status,
+    supplier_id,
+    invoice_no,
+  } = req.query;
+
+  let query = `
+    SELECT gr.*, s.company_name 
+    FROM purchase_debit_note gr 
+    LEFT JOIN supplier s ON gr.supplier_id = s.supplier_id 
+    WHERE 1=1
+  `;
+  const values = [];
+
+  if (tran_no && tran_no.trim()) {
+    query += ` AND gr.tran_no = ?`;
+    values.push(tran_no.trim());
+  }
+
+  if (from_date && from_date.trim()) {
+    query += ` AND gr.tran_date >= ?`;
+    values.push(from_date.trim());
+  }
+
+  if (to_date && to_date.trim()) {
+    query += ` AND gr.tran_date <= ?`;
+    values.push(to_date.trim());
+  }
+
+  if (status && status.trim()) {
+    query += ` AND gr.status = ?`;
+    values.push(status.trim());
+  }
+
+  if (supplier_id && supplier_id.trim()) {
+    query += ` AND gr.supplier_id = ?`;
+    values.push(supplier_id.trim());
+  }
+
+  if (invoice_no && invoice_no.trim()) {
+    query += ` AND gr.invoice_no LIKE ?`;
+    values.push(`%${invoice_no.trim()}%`);
+  }
+
+  console.log('SQL Query:', query, 'Values:', values); // For debugging
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      return res.status(500).json({ msg: 'DB Error', error: err });
+    }
+    res.status(200).json({ msg: 'Success', data: result, total: result.length });
+  });
+});
+
+
+  app.post('/insertPiProduct', (req, res, next) => {
+  let data = {
+    purchase_invoice_id: req.body.purchase_invoice_id,
+    purchase_order_id: req.body.purchase_order_id,
+    item_title: req.body.product_name,
+    quantity: req.body.quantity,
+    unit: req.body.unit,
+    amount: req.body.amount,
+    description: req.body.description ?? '',
+    creation_date: new Date().toISOString(),
+    modification_date: new Date().toISOString(),
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    status: req.body.status,
+    cost_price: req.body.cost_price,
+    selling_price: req.body.selling_price,
+    qty_updated: req.body.qty_updated,
+    qty: req.body.qty,
+    product_id: req.body.product_id,
+    supplier_id: req.body.supplier_id,
+    gst: req.body.gst,
+    damage_qty: req.body.damage_qty,
+    brand: req.body.brand,
+    qty_requested: req.body.qty_requested,
+    qty_delivered: req.body.qty_delivered,
+    price: req.body.price,
+    uom: req.body.uom,
+    kilo_price: req.body.kilo_price,
+    standard_rate: req.body.standard_rate,
+    foc_qty: req.body.foc_qty,
+    carton_qty: req.body.carton_qty,
+    loose_qty: req.body.loose_qty,
+    carton_price: req.body.carton_price,
+    gross_total: req.body.gross_total,
+    discount: req.body.discount,
+    total: req.body.total
+  };
+
+  db.query('INSERT INTO pi_product SET ?', data, (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.post('/editPiProduct', (req, res, next) => {
+  db.query(`
+    UPDATE pi_product
+    SET description=${db.escape(req.body.description)},
+        qty_updated=${db.escape(req.body.qty_updated)},
+        amount=${db.escape(req.body.amount)},
+        item_title=${db.escape(req.body.item_title)},
+        selling_price=${db.escape(req.body.selling_price)},
+        cost_price=${db.escape(req.body.cost_price)},
+        gst=${db.escape(req.body.gst)},
+        product_id=${db.escape(req.body.product_id)},
+        unit=${db.escape(req.body.unit)},
+        qty=${db.escape(req.body.qty)},
+        damage_qty=${db.escape(req.body.damage_qty)},
+        qty_delivered=${db.escape(req.body.qty_delivered)},
+        status=${db.escape(req.body.status)},
+        qty_requested=${db.escape(req.body.qty_requested)},
+        carton_qty=${db.escape(req.body.carton_qty)},
+        loose_qty=${db.escape(req.body.loose_qty)},
+        carton_price=${db.escape(req.body.carton_price)},
+        gross_total=${db.escape(req.body.gross_total)},
+        discount=${db.escape(req.body.discount)},
+        total=${db.escape(req.body.total)},
+        brand=${db.escape(req.body.brand)},
+        uom=${db.escape(req.body.uom)},
+        kilo_price=${db.escape(req.body.kilo_price)},
+        standard_rate=${db.escape(req.body.standard_rate)},
+        foc_qty=${db.escape(req.body.foc_qty)},
+        modification_date=${db.escape(new Date().toISOString())},
+        modified_by=${db.escape(req.body.modified_by)}
+    WHERE pi_product_id = ${db.escape(req.body.pi_product_id)}
+  `,
+  (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.get('/getAllPiProducts', (req, res, next) => {
+  db.query('SELECT * FROM pi_product', (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.post('/getPiProductByPurchaseInvoiceId', (req, res, next) => {
+  db.query(
+    `SELECT 
+      gr.*,
+      p.title AS product_name,
+      p.product_code
+    FROM pi_product gr
+    LEFT JOIN product p ON gr.product_id = p.product_id WHERE gr.purchase_invoice_id = ${db.escape(req.body.purchase_invoice_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+});
+
+app.post('/deletePiProduct', (req, res, next) => {
+  db.query(
+    `DELETE FROM pi_product WHERE pi_product_id = ${db.escape(req.body.pi_product_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Deleted Successfully' });
+      }
+    }
+  );
+});
+
+
+  app.post('/insertPdProduct', (req, res, next) => {
+  let data = {
+    purchase_debit_note_id: req.body.purchase_debit_note_id,
+    purchase_order_id: req.body.purchase_order_id,
+    item_title: req.body.item_title,
+    quantity: req.body.quantity,
+    unit: req.body.unit,
+    amount: req.body.amount,
+    description: req.body.description ?? '',
+    creation_date: new Date().toISOString(),
+    modification_date: new Date().toISOString(),
+    created_by: req.body.created_by,
+    modified_by: req.body.modified_by,
+    status: req.body.status,
+    cost_price: req.body.cost_price,
+    selling_price: req.body.selling_price,
+    qty_updated: req.body.qty_updated,
+    qty: req.body.qty,
+    product_id: req.body.product_id,
+    supplier_id: req.body.supplier_id,
+    gst: req.body.gst,
+    damage_qty: req.body.damage_qty,
+    brand: req.body.brand,
+    qty_requested: req.body.qty_requested,
+    qty_delivered: req.body.qty_delivered,
+    price: req.body.price,
+    carton_qty: req.body.carton_qty,
+    loose_qty: req.body.loose_qty,
+    carton_price: req.body.carton_price,
+    gross_total: req.body.gross_total,
+    discount: req.body.discount,
+    total: req.body.total
+  };
+
+  db.query('INSERT INTO pd_product SET ?', data, (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.post('/editPdProduct', (req, res, next) => {
+  db.query(`
+    UPDATE pd_product
+    SET description=${db.escape(req.body.description)},
+        qty_updated=${db.escape(req.body.qty_updated)},
+        amount=${db.escape(req.body.amount)},
+        item_title=${db.escape(req.body.item_title)},
+        selling_price=${db.escape(req.body.selling_price)},
+        cost_price=${db.escape(req.body.cost_price)},
+        gst=${db.escape(req.body.gst)},
+        product_id=${db.escape(req.body.product_id)},
+        unit=${db.escape(req.body.unit)},
+        qty=${db.escape(req.body.qty)},
+        damage_qty=${db.escape(req.body.damage_qty)},
+        qty_delivered=${db.escape(req.body.qty_delivered)},
+        status=${db.escape(req.body.status)},
+        qty_requested=${db.escape(req.body.qty_requested)},
+        carton_qty=${db.escape(req.body.carton_qty)},
+        loose_qty=${db.escape(req.body.loose_qty)},
+        carton_price=${db.escape(req.body.carton_price)},
+        gross_total=${db.escape(req.body.gross_total)},
+        discount=${db.escape(req.body.discount)},
+        total=${db.escape(req.body.total)},
+        brand=${db.escape(req.body.brand)},
+        modification_date=${db.escape(new Date().toISOString())},
+        modified_by=${db.escape(req.body.modified_by)}
+    WHERE pd_product_id = ${db.escape(req.body.pd_product_id)}
+  `,
+  (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.get('/getAllPdProducts', (req, res, next) => {
+  db.query('SELECT * FROM pd_product', (err, result) => {
+    if (err) {
+      return res.status(400).send({ data: err });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+app.post('/getPdProductByPurchaseDebitNoteId', (req, res, next) => {
+  db.query(
+    `SELECT 
+      gr.*,
+      p.title AS product_name,
+      p.product_code
+    FROM pd_product gr
+    LEFT JOIN product p ON gr.product_id = p.product_id WHERE gr.purchase_debit_note_id = ${db.escape(req.body.purchase_debit_note_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+});
+
+app.post('/deletePdProduct', (req, res, next) => {
+  db.query(
+    `DELETE FROM pd_product WHERE pd_product_id = ${db.escape(req.body.pd_product_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Deleted Successfully' });
+      }
+    }
+  );
+});
+
+app.post('/getPurchaseOrdersByProductId', (req, res) => {
+    const { product_id, from_date, to_date } = req.body;
+
+    if (!product_id) {
+        return res.status(400).send({ msg: 'product_id is required' });
+    }
+
+    let query = `
+        SELECT
+            po.purchase_order_id,
+            po.title,
+            po.po_code,
+            po.po_date,
+            po.supplier_id,
+            s.company_name,
+            pop.product_id,
+            p.title AS product_name,
+            p.product_code,
+            pop.qty,
+            pop.uom,
+            pop.total
+        FROM
+            purchase_order po
+        INNER JOIN
+            po_product pop ON po.purchase_order_id = pop.purchase_order_id
+        INNER JOIN
+            product p ON pop.product_id = p.product_id
+        LEFT JOIN
+            supplier s ON po.supplier_id = s.supplier_id
+        WHERE
+            pop.product_id = ${db.escape(product_id)}
+    `;
+
+    // If date filters provided, add them (using the 'po_date' column)
+    if (from_date && to_date) {
+        query += ` AND po.po_date BETWEEN ${db.escape(from_date)} AND ${db.escape(to_date)}`;
+    } else if (from_date) {
+        query += ` AND po.po_date >= ${db.escape(from_date)}`;
+    } else if (to_date) {
+        query += ` AND po.po_date <= ${db.escape(to_date)}`;
+    }
+
+    query += ` ORDER BY po.po_date DESC`;
+
+    db.query(query, (err, result) => {
+        if (err) {
+            console.error("Error fetching purchase orders by product:", err);
+            return res.status(500).send({ msg: 'Database error', error: err });
+        }
+        return res.status(200).send({ data: result, msg: 'Success' });
+    });
+});
+
+app.post('/getPurchaseInvoicesByProductId', (req, res) => {
+  const { product_id, from_date, to_date } = req.body;
+
+  if (!product_id) {
+    return res.status(400).send({ msg: 'product_id is required' });
+  }
+
+  let query = `
+    SELECT 
+      pi.purchase_invoice_id,
+       pi.title,
+      pi.invoice_no,
+      pi.invoice_date,
+      pi.supplier_id,
+      s.company_name,
+      pip.product_id,
+      p.title AS product_name,
+      p.product_code,
+      pip.qty,
+      pip.uom,
+      pip.total
+    FROM purchase_invoice pi
+    INNER JOIN pi_product pip ON pi.purchase_invoice_id = pip.purchase_invoice_id
+    INNER JOIN product p ON pip.product_id = p.product_id
+    LEFT JOIN supplier s ON pi.supplier_id = s.supplier_id
+    WHERE pip.product_id = ${db.escape(product_id)}
+  `;
+
+  // If date filters provided, add them
+  if (from_date && to_date) {
+    query += ` AND pi.invoice_date BETWEEN ${db.escape(from_date)} AND ${db.escape(to_date)}`;
+  } else if (from_date) {
+    query += ` AND pi.invoice_date >= ${db.escape(from_date)}`;
+  } else if (to_date) {
+    query += ` AND pi.invoice_date <= ${db.escape(to_date)}`;
+  }
+
+  query += ` ORDER BY pi.invoice_date DESC`;
+
+  db.query(query, (err, result) => {
+    if (err) {
+      console.error("Error fetching purchase invoices by product:", err);
+      return res.status(500).send({ msg: 'Database error', error: err });
+    }
+    return res.status(200).send({ data: result, msg: 'Success' });
+  });
+});
+
+app.post('/getPurchaseDebitNotesByProductId', (req, res) => {
+  const { product_id, from_date, to_date } = req.body;
+
+  if (!product_id) {
+    return res.status(400).send({ msg: 'product_id is required' });
+  }
+
+  let query = `
+    SELECT 
+      pi.purchase_debit_note_id,
+       pi.title,
+      pi.invoice_no,
+      pi.invoice_date,
+      pi.supplier_id,
+      s.company_name,
+      pip.product_id,
+      p.title AS product_name,
+      p.product_code,
+      pip.qty,
+      pip.uom,
+      pip.total
+    FROM purchase_debit_note pi
+    INNER JOIN pd_product pip ON pi.purchase_debit_note_id = pip.purchase_debit_note_id
+    INNER JOIN product p ON pip.product_id = p.product_id
+    LEFT JOIN supplier s ON pi.supplier_id = s.supplier_id
+    WHERE pip.product_id = ${db.escape(product_id)}
+  `;
+
+  // If date filters provided, add them
+  if (from_date && to_date) {
+    query += ` AND pi.invoice_date BETWEEN ${db.escape(from_date)} AND ${db.escape(to_date)}`;
+  } else if (from_date) {
+    query += ` AND pi.invoice_date >= ${db.escape(from_date)}`;
+  } else if (to_date) {
+    query += ` AND pi.invoice_date <= ${db.escape(to_date)}`;
+  }
+
+  query += ` ORDER BY pi.invoice_date DESC`;
+
+  db.query(query, (err, result) => {
+    if (err) {
+      console.error("Error fetching purchase invoices by product:", err);
+      return res.status(500).send({ msg: 'Database error', error: err });
+    }
+    return res.status(200).send({ data: result, msg: 'Success' });
+  });
+});
+
+
+app.post('/getGoodsReceiptsByProductId', (req, res) => {
+  const { product_id, from_date, to_date } = req.body;
+
+  if (!product_id) {
+    return res.status(400).send({ msg: 'product_id is required' });
+  }
+
+  let query = `
+    SELECT 
+      pi.goods_receipt_id,
+       pi.title,
+      pi.invoice_no,
+      pi.invoice_date,
+      pi.supplier_id,
+      s.company_name,
+      pip.product_id,
+      p.title AS product_name,
+      p.product_code,
+      pip.qty,
+      pip.uom,
+      pip.total
+    FROM goods_receipt pi
+    INNER JOIN gr_product pip ON pi.goods_receipt_id = pip.goods_receipt_id
+    INNER JOIN product p ON pip.product_id = p.product_id
+    LEFT JOIN supplier s ON pi.supplier_id = s.supplier_id
+    WHERE pip.product_id = ${db.escape(product_id)}
+  `;
+
+  // If date filters provided, add them
+  if (from_date && to_date) {
+    query += ` AND pi.invoice_date BETWEEN ${db.escape(from_date)} AND ${db.escape(to_date)}`;
+  } else if (from_date) {
+    query += ` AND pi.invoice_date >= ${db.escape(from_date)}`;
+  } else if (to_date) {
+    query += ` AND pi.invoice_date <= ${db.escape(to_date)}`;
+  }
+
+  query += ` ORDER BY pi.invoice_date DESC`;
+
+  db.query(query, (err, result) => {
+    if (err) {
+      console.error("Error fetching purchase invoices by product:", err);
+      return res.status(500).send({ msg: 'Database error', error: err });
+    }
+    return res.status(200).send({ data: result, msg: 'Success' });
+  });
+});
+
+
+app.post('/getGoodsReturnsByProductId', (req, res) => {
+  const { product_id, from_date, to_date } = req.body;
+
+  if (!product_id) {
+    return res.status(400).send({ msg: 'product_id is required' });
+  }
+
+  let query = `
+    SELECT 
+      pi.goods_return_id,
+       pi.title,
+      pi.invoice_no,
+      pi.invoice_date,
+      pi.supplier_id,
+      s.company_name,
+      pip.product_id,
+      p.title AS product_name,
+      p.product_code,
+      pip.qty,
+      pip.uom,
+      pip.total
+    FROM goods_return pi
+    INNER JOIN goods_return_product pip ON pi.goods_return_id = pip.goods_return_id
+    INNER JOIN product p ON pip.product_id = p.product_id
+    LEFT JOIN supplier s ON pi.supplier_id = s.supplier_id
+    WHERE pip.product_id = ${db.escape(product_id)}
+  `;
+
+  // If date filters provided, add them
+  if (from_date && to_date) {
+    query += ` AND pi.invoice_date BETWEEN ${db.escape(from_date)} AND ${db.escape(to_date)}`;
+  } else if (from_date) {
+    query += ` AND pi.invoice_date >= ${db.escape(from_date)}`;
+  } else if (to_date) {
+    query += ` AND pi.invoice_date <= ${db.escape(to_date)}`;
+  }
+
+  query += ` ORDER BY pi.invoice_date DESC`;
+
+  db.query(query, (err, result) => {
+    if (err) {
+      console.error("Error fetching goods returns by product:", err);
+      return res.status(500).send({ msg: 'Database error', error: err });
+    }
+    return res.status(200).send({ data: result, msg: 'Success' });
+  });
+});
+
+
+
+
+app.post('/getPurchaseInvoicesByIds', (req, res) => {
+  const { purchase_invoice_ids } = req.body;
+
+  if (!purchase_invoice_ids || !Array.isArray(purchase_invoice_ids)) {
+    return res.status(400).send({ msg: 'purchase_invoice_ids must be an array' });
+  }
+
+  const ids = purchase_invoice_ids.map(id => db.escape(id)).join(',');
+
+  //  Get invoices with supplier info
+  const invoiceQuery = `
+    SELECT 
+      pi.purchase_invoice_id,
+      pi.tran_no,
+      pi.tran_date,
+      pi.sub_total,
+      pi.gst,
+      pi.net_total,
+      pi.paid_amount,
+      pi.balance_amount,
+      pi.created_by,
+      s.supplier_id,
+      s.company_name,
+      s.address_flat,
+      s.address_street, 
+      s.address_town,
+      s.address_state, 
+       s.address_country,
+      s.address_po_code  
+    FROM purchase_invoice pi
+    LEFT JOIN supplier s ON pi.supplier_id = s.supplier_id
+    WHERE pi.purchase_invoice_id IN (${ids})
+  `;
+
+  db.query(invoiceQuery, (err, invoices) => {
+    if (err) {
+      console.error(err);
+      return res.status(400).send({ data: err });
+    }
+
+    if (!invoices.length) {
+      return res.status(404).send({ msg: 'No invoices found' });
+    }
+
+    //  Get all line items for these invoices
+    const lineItemsQuery = `
+      SELECT 
+        pi_product.purchase_invoice_id,
+        p.product_id,
+        p.title AS product_name,
+        pi_product.uom,
+        pi_product.total
+      FROM pi_product
+      LEFT JOIN product p ON pi_product.product_id = p.product_id
+      WHERE pi_product.purchase_invoice_id IN (${ids})
+    `;
+
+    db.query(lineItemsQuery, (err2, lineItems) => {
+      if (err2) {
+        console.error(err2);
+        return res.status(400).send({ data: err2 });
+      }
+
+      //  Group line items under each invoice
+      const result = invoices.map(inv => ({
+        purchase_invoice_id: inv.purchase_invoice_id,
+        tran_no: inv.tran_no,
+        tran_date: inv.tran_date,
+        sub_total: inv.sub_total,
+        gst: inv.gst,
+        net_total: inv.net_total,
+        paid_amount: inv.paid_amount,
+        balance_amount: inv.balance_amount,
+        created_by: inv.created_by,
+        supplier: {
+          supplier_id: inv.supplier_id,
+          company_name: inv.company_name,
+          address: inv.address_flat,
+          phone: inv.address_street
+        },
+        lineItems: lineItems.filter(li => li.purchase_invoice_id === inv.purchase_invoice_id)
+      }));
+
+      return res.status(200).send({ data: result, msg: 'Success' });
+    });
+  });
+});
+
+
+app.post('/deletePurchaseInvoices', (req, res, next) => {
+  const { purchase_invoice_ids } = req.body;
+
+  if (!purchase_invoice_ids || !Array.isArray(purchase_invoice_ids) || purchase_invoice_ids.length === 0) {
+    return res.status(400).send({ msg: 'purchase_invoice_ids must be a non-empty array' });
+  }
+
+  // Escape each ID and join them
+  const ids = purchase_invoice_ids.map(id => db.escape(id)).join(',');
+
+  const sql = `DELETE FROM purchase_invoice WHERE purchase_invoice_id IN (${ids})`;
+
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(400).send({ data: err });
+    }
+
+    return res.status(200).send({ data: result, msg: 'Deleted successfully' });
+  });
+});
+
+app.post('/repeatGoodsReceipt', (req, res,next) => {
+  const { goods_receipt_ids, created_by } = req.body;
+
+  if (!goods_receipt_ids || !Array.isArray(goods_receipt_ids)) {
+    return res.status(400).send({ msg: 'goods_receipt_ids must be an array' });
+  }
+
+  const ids = goods_receipt_ids.map(id => db.escape(id)).join(',');
+
+  // 1️⃣ Fetch all selected Goods Receipts
+  const grQuery = `SELECT * FROM goods_receipt WHERE goods_receipt_id IN (${ids})`;
+
+  db.query(grQuery, (err, grs) => {
+    if (err) {
+      console.error(err);
+      return res.status(400).send({ data: err });
+    }
+
+    if (!grs.length) {
+      return res.status(404).send({ msg: 'No Goods Receipts found' });
+    }
+
+    // For each GR, create a new GR and copy its products
+    const repeatedGrs = [];
+
+    let pending = grs.length;
+    grs.forEach(gr => {
+      const insertHeaderQuery = `
+        INSERT INTO goods_receipt 
+          (purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier, 
+           delivery_terms, status, project_id, flag, creation_date, modification_date, 
+           created_by, modified_by, supplier_reference_no, our_reference_no, shipping_method, 
+           payment_terms, delivery_date, po_date, shipping_address_flat, shipping_address_street, 
+           shipping_address_country, shipping_address_po_code, expense_id, staff_id, goods_receipt_date, 
+           payment_status, title, priority, follow_up_date, notes, supplier_inv_code, gst, 
+           gst_percentage, delivery_to, contact, mobile, payment, project, tran_no, tran_date, 
+           contact_address1, contact_address2, contact_address3, country, remarks, req_delivery_date, 
+           contact_person, invoice_date, postal_code, invoice_no, do_no, sub_total, net_total)
+        VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `;
+
+      const headerValues = [
+        gr.purchase_order_id, gr.po_code, gr.site_id, gr.supplier_id, gr.contact_id_supplier,
+        gr.delivery_terms, 'Repeated', gr.project_id, gr.flag,
+        created_by, created_by, gr.supplier_reference_no, gr.our_reference_no, gr.shipping_method,
+        gr.payment_terms, gr.delivery_date, gr.po_date, gr.shipping_address_flat, gr.shipping_address_street,
+        gr.shipping_address_country, gr.shipping_address_po_code, gr.expense_id, gr.staff_id, new Date(),
+        gr.payment_status, gr.title, gr.priority, gr.follow_up_date, gr.notes, gr.supplier_inv_code,
+        gr.gst, gr.gst_percentage, gr.delivery_to, gr.contact, gr.mobile, gr.payment, gr.project, gr.tran_no, gr.tran_date,
+        gr.contact_address1, gr.contact_address2, gr.contact_address3, gr.country, gr.remarks, gr.req_delivery_date,
+        gr.contact_person, gr.invoice_date, gr.postal_code, gr.invoice_no, gr.do_no, gr.sub_total, gr.net_total
+      ];
+
+      db.query(insertHeaderQuery, headerValues, (err2, newGrResult) => {
+        if (err2) {
+          console.error(err2);
+          return res.status(400).send({ data: err2 });
+        }
+
+        const newGrId = newGrResult.insertId;
+
+        // 2️⃣ Copy products for this GR
+        const productQuery = `SELECT * FROM gr_product WHERE goods_receipt_id = ?`;
+
+        db.query(productQuery, [gr.goods_receipt_id], (err3, products) => {
+          if (err3) {
+            console.error(err3);
+            return res.status(400).send({ data: err3 });
+          }
+
+          if (products.length) {
+            let productPending = products.length;
+
+            products.forEach(p => {
+              const insertProductQuery = `
+                INSERT INTO gr_product 
+                  (goods_receipt_id, purchase_order_id, item_title, quantity, unit, amount, description, 
+                   creation_date, modification_date, created_by, modified_by, status, cost_price, 
+                   selling_price, qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand, 
+                   qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total, 
+                   discount, total)
+                VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              `;
+
+              const productValues = [
+                newGrId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
+                created_by, created_by, p.status, p.cost_price,
+                p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id, p.gst, p.damage_qty, p.brand,
+                p.qty_requested, p.qty_delivered, p.price, p.carton_qty, p.loose_qty, p.carton_price, p.gross_total,
+                p.discount, p.total
+              ];
+
+              db.query(insertProductQuery, productValues, err4 => {
+                if (err4) {
+                  console.error(err4);
+                  return res.status(400).send({ data: err4 });
+                }
+
+                productPending--;
+                if (productPending === 0) {
+                  repeatedGrs.push({ old_gr_id: gr.goods_receipt_id, new_gr_id: newGrId });
+                  pending--;
+                  if (pending === 0) {
+                    return res.status(200).send({
+                      data: repeatedGrs,
+                      msg: 'Goods Receipts repeated successfully'
+                    });
+                  }
+                }
+              });
+            });
+          } else {
+            // No products, just push header
+            repeatedGrs.push({ old_gr_id: gr.goods_receipt_id, new_gr_id: newGrId });
+            pending--;
+            if (pending === 0) {
+              return res.status(200).send({
+                data: repeatedGrs,
+                msg: 'Goods Receipts repeated successfully'
+              });
+            }
+          }
+        });
+      });
+    });
+  });
+});
+
+
+app.post('/ConvertToPurchaseInvoice', (req, res, next) => {
+  const { goods_receipt_ids, created_by } = req.body;
+
+  if (!goods_receipt_ids || !Array.isArray(goods_receipt_ids)) {
+    return res.status(400).send({ msg: 'goods_receipt_ids must be an array' });
+  }
+
+  const ids = goods_receipt_ids.map(id => db.escape(id)).join(',');
+
+  //  Fetch all selected Goods Receipts
+  const grQuery = `SELECT * FROM goods_receipt WHERE goods_receipt_id IN (${ids})`;
+
+  db.query(grQuery, (err, grs) => {
+    if (err) {
+      console.error(err);
+      return res.status(400).send({ data: err });
+    }
+
+    if (!grs.length) {
+      return res.status(404).send({ msg: 'No Goods Receipts found' });
+    }
+
+    const convertedInvoices = [];
+    let pending = grs.length;
+
+    grs.forEach(gr => {
+      const insertHeaderQuery = `
+        INSERT INTO purchase_invoice 
+          (purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier,
+           delivery_terms, status, project_id, flag, creation_date, modification_date, 
+           created_by, modified_by, supplier_reference_no, our_reference_no, 
+           shipping_method, payment_terms, delivery_date, po_date, 
+           shipping_address_flat, shipping_address_street, shipping_address_country, shipping_address_po_code, 
+           expense_id, staff_id, purchase_invoice_date, payment_status, title, priority, 
+           follow_up_date, notes, supplier_inv_code, gst, gst_percentage, delivery_to, 
+           contact, mobile, payment, project, tran_no, tran_date, contact_address1, 
+           contact_address2, contact_address3, country, remarks, req_delivery_date, 
+           contact_person, invoice_date, postal_code, invoice_no, do_no, sub_total, 
+           net_total, paid_amount, balance_amount)
+        VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `;
+
+      const headerValues = [
+        gr.purchase_order_id, gr.po_code, gr.site_id, gr.supplier_id, gr.contact_id_supplier,
+        gr.delivery_terms, 'Converted', gr.project_id, gr.flag,
+        created_by, created_by, gr.supplier_reference_no, gr.our_reference_no,
+        gr.shipping_method, gr.payment_terms, gr.delivery_date, gr.po_date,
+        gr.shipping_address_flat, gr.shipping_address_street, gr.shipping_address_country, gr.shipping_address_po_code,
+        gr.expense_id, gr.staff_id, new Date(), gr.payment_status, gr.title, gr.priority,
+        gr.follow_up_date, gr.notes, gr.supplier_inv_code, gr.gst, gr.gst_percentage, gr.delivery_to,
+        gr.contact, gr.mobile, gr.payment, gr.project, gr.tran_no, gr.tran_date, gr.contact_address1,
+        gr.contact_address2, gr.contact_address3, gr.country, gr.remarks, gr.req_delivery_date,
+        gr.contact_person, gr.invoice_date, gr.postal_code, gr.invoice_no, gr.do_no, gr.sub_total,
+        gr.net_total, 0, gr.net_total // paid_amount = 0, balance_amount = net_total
+      ];
+
+      db.query(insertHeaderQuery, headerValues, (err2, newPiResult) => {
+        if (err2) {
+          console.error(err2);
+          return res.status(400).send({ data: err2 });
+        }
+
+        const newPiId = newPiResult.insertId;
+
+        // Copy products from GR → PI
+        const productQuery = `SELECT * FROM gr_product WHERE goods_receipt_id = ?`;
+
+        db.query(productQuery, [gr.goods_receipt_id], (err3, products) => {
+          if (err3) {
+            console.error(err3);
+            return res.status(400).send({ data: err3 });
+          }
+
+          if (products.length) {
+            let productPending = products.length;
+
+            products.forEach(p => {
+              const insertProductQuery = `
+                INSERT INTO pi_product 
+                  (purchase_invoice_id, purchase_order_id, item_title, quantity, unit, amount, description, 
+                   creation_date, modification_date, created_by, modified_by, status, cost_price, 
+                   selling_price, qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand, 
+                   qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total, 
+                   discount, total, uom, foc_qty, kilo_price, standard_rate, remarks)
+                VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              `;
+
+              const productValues = [
+                newPiId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
+                created_by, created_by, p.status, p.cost_price,
+                p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id, p.gst, p.damage_qty, p.brand,
+                p.qty_requested, p.qty_delivered, p.price, p.carton_qty, p.loose_qty, p.carton_price, p.gross_total,
+                p.discount, p.total, p.uom, p.foc_qty, p.kilo_price, p.standard_rate, p.remarks
+              ];
+
+              db.query(insertProductQuery, productValues, err4 => {
+                if (err4) {
+                  console.error(err4);
+                  return res.status(400).send({ data: err4 });
+                }
+
+                productPending--;
+                if (productPending === 0) {
+                  convertedInvoices.push({ old_gr_id: gr.goods_receipt_id, new_pi_id: newPiId });
+                  pending--;
+                  if (pending === 0) {
+                    return res.status(200).send({
+                      data: convertedInvoices,
+                      msg: 'Goods Receipts converted to Purchase Invoices successfully'
+                    });
+                  }
+                }
+              });
+            });
+          } else {
+            // No products in GR → Just insert PI header
+            convertedInvoices.push({ old_gr_id: gr.goods_receipt_id, new_pi_id: newPiId });
+            pending--;
+            if (pending === 0) {
+              return res.status(200).send({
+                data: convertedInvoices,
+                msg: 'Goods Receipts converted to Purchase Invoices successfully'
+              });
+            }
+          }
+        });
+      });
+    });
+  });
+});
+
+app.post('/repeatGoodsReturn', (req, res) => {
+  const { goods_return_ids, created_by } = req.body;
+
+  if (!goods_return_ids || !Array.isArray(goods_return_ids)) {
+    return res.status(400).send({ msg: 'goods_return_ids must be an array' });
+  }
+
+  const ids = goods_return_ids.map(id => db.escape(id)).join(',');
+
+  // 1️⃣ Fetch all selected Goods Returns
+  const grQuery = `SELECT * FROM goods_return WHERE goods_return_id IN (${ids})`;
+
+  db.query(grQuery, (err, grs) => {
+    if (err) return res.status(400).send({ data: err });
+
+    if (!grs.length) {
+      return res.status(404).send({ msg: 'No Goods Returns found' });
+    }
+
+    const repeatedGRs = [];
+    let pending = grs.length;
+
+    grs.forEach(gr => {
+      const insertHeaderQuery = `
+        INSERT INTO goods_return
+          (po_code, site_id, supplier_id, contact_id_supplier, delivery_terms, status, project_id, flag,
+           creation_date, modification_date, created_by, modified_by, supplier_reference_no, our_reference_no, 
+           shipping_method, payment_terms, delivery_date, po_date, shipping_address_flat, shipping_address_street, 
+           shipping_address_country, shipping_address_po_code, expense_id, staff_id, goods_receipt_date, 
+           payment_status, title, priority, follow_up_date, notes, supplier_inv_code, gst, gst_percentage, delivery_to, 
+           contact, mobile, payment, project, tran_no, tran_date, contact_address1, contact_address2, contact_address3, 
+           country, remarks, req_delivery_date, contact_person, purchase_order_id, invoice_date, invoice_no, 
+           postal_code, do_no, sub_total, net_total)
+        VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `;
+
+      const headerValues = [
+        gr.po_code, gr.site_id, gr.supplier_id, gr.contact_id_supplier, gr.delivery_terms, "Repeated", gr.project_id, gr.flag,
+        created_by, created_by, gr.supplier_reference_no, gr.our_reference_no, gr.shipping_method, gr.payment_terms, 
+        gr.delivery_date, gr.po_date, gr.shipping_address_flat, gr.shipping_address_street, gr.shipping_address_country, 
+        gr.shipping_address_po_code, gr.expense_id, gr.staff_id, gr.goods_receipt_date, gr.payment_status, gr.title, gr.priority,
+        gr.follow_up_date, gr.notes, gr.supplier_inv_code, gr.gst, gr.gst_percentage, gr.delivery_to, gr.contact, gr.mobile,
+        gr.payment, gr.project, gr.tran_no, gr.tran_date, gr.contact_address1, gr.contact_address2, gr.contact_address3,
+        gr.country, gr.remarks, gr.req_delivery_date, gr.contact_person, gr.purchase_order_id, gr.invoice_date,
+        gr.invoice_no, gr.postal_code, gr.do_no, gr.sub_total, gr.net_total
+      ];
+
+      db.query(insertHeaderQuery, headerValues, (err2, newGR) => {
+        if (err2) return res.status(400).send({ data: err2 });
+
+        const newGrId = newGR.insertId;
+
+        // 2️⃣ Copy products
+        db.query(`SELECT * FROM goods_return_product WHERE goods_return_id=?`, [gr.goods_return_id], (err3, products) => {
+          if (err3) return res.status(400).send({ data: err3 });
+
+          if (products.length) {
+            let productPending = products.length;
+
+            products.forEach(p => {
+              const insertProductQuery = `
+                INSERT INTO goods_return_product
+                  (goods_return_id, purchase_order_id, item_title, quantity, unit, amount, description,
+                   creation_date, modification_date, created_by, modified_by, status, cost_price, selling_price,
+                   qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand, qty_requested, qty_delivered,
+                   price, carton_qty, loose_qty, carton_price, gross_total, discount, total)
+                VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              `;
+              const productValues = [
+                newGrId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
+                created_by, created_by, p.status, p.cost_price, p.selling_price, p.qty_updated, p.qty, p.product_id,
+                p.supplier_id, p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
+                p.carton_qty, p.loose_qty, p.carton_price, p.gross_total, p.discount, p.total
+              ];
+
+              db.query(insertProductQuery, productValues, err4 => {
+                if (err4) return res.status(400).send({ data: err4 });
+
+                productPending--;
+                if (productPending === 0) {
+                  repeatedGRs.push({ old_gr_id: gr.goods_return_id, new_gr_id: newGrId });
+                  pending--;
+                  if (pending === 0) {
+                    return res.status(200).send({ msg: "Goods Returns repeated successfully", data: repeatedGRs });
+                  }
+                }
+              });
+            });
+          } else {
+            repeatedGRs.push({ old_gr_id: gr.goods_return_id, new_gr_id: newGrId });
+            pending--;
+            if (pending === 0) {
+              return res.status(200).send({ msg: "Goods Returns repeated successfully", data: repeatedGRs });
+            }
+          }
+        });
+      });
+    });
+  });
+});
+
+app.post('/convertToPurchaseDebitNote', (req, res) => {
+  const { goods_return_ids, created_by } = req.body;
+
+  if (!goods_return_ids || !Array.isArray(goods_return_ids)) {
+    return res.status(400).send({ msg: 'goods_return_ids must be an array' });
+  }
+
+  const ids = goods_return_ids.map(id => db.escape(id)).join(',');
+
+  // Fetch Goods Returns
+  const grQuery = `SELECT * FROM goods_return WHERE goods_return_id IN (${ids})`;
+
+  db.query(grQuery, (err, grs) => {
+    if (err) return res.status(400).send({ data: err });
+    if (!grs.length) return res.status(404).send({ msg: 'No Goods Returns found' });
+
+    const createdPDNs = [];
+    let pending = grs.length;
+
+    grs.forEach(gr => {
+      const insertPDNQuery = `
+        INSERT INTO purchase_debit_note
+          (purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier, delivery_terms, status, project_id, flag,
+           creation_date, modification_date, created_by, modified_by, supplier_reference_no, our_reference_no, 
+           shipping_method, payment_terms, delivery_date, po_date, shipping_address_flat, shipping_address_street,
+           shipping_address_country, shipping_address_po_code, expense_id, staff_id, purchase_debit_note_date,
+           payment_status, title, priority, follow_up_date, notes, supplier_inv_code, gst, gst_percentage, delivery_to,
+           contact, mobile, payment, project, tran_no, tran_date, contact_address1, contact_address2, contact_address3,
+           country, remarks, req_delivery_date, contact_person, invoice_date, invoice_no, postal_code, do_no, sub_total, net_total)
+        VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `;
+
+      const headerValues = [
+        gr.purchase_order_id, gr.po_code, gr.site_id, gr.supplier_id, gr.contact_id_supplier, gr.delivery_terms, "Converted", gr.project_id, gr.flag,
+        created_by, created_by, gr.supplier_reference_no, gr.our_reference_no, gr.shipping_method, gr.payment_terms,
+        gr.delivery_date, gr.po_date, gr.shipping_address_flat, gr.shipping_address_street, gr.shipping_address_country,
+        gr.shipping_address_po_code, gr.expense_id, gr.staff_id, new Date(), gr.payment_status, gr.title, gr.priority,
+        gr.follow_up_date, gr.notes, gr.supplier_inv_code, gr.gst, gr.gst_percentage, gr.delivery_to, gr.contact, gr.mobile,
+        gr.payment, gr.project, gr.tran_no, gr.tran_date, gr.contact_address1, gr.contact_address2, gr.contact_address3,
+        gr.country, gr.remarks, gr.req_delivery_date, gr.contact_person, gr.invoice_date, gr.invoice_no, gr.postal_code,
+        gr.do_no, gr.sub_total, gr.net_total
+      ];
+
+      db.query(insertPDNQuery, headerValues, (err2, newPDN) => {
+        if (err2) return res.status(400).send({ data: err2 });
+
+        const newPDNId = newPDN.insertId;
+
+        db.query(`SELECT * FROM goods_return_product WHERE goods_return_id=?`, [gr.goods_return_id], (err3, products) => {
+          if (err3) return res.status(400).send({ data: err3 });
+
+          if (products.length) {
+            let productPending = products.length;
+
+            products.forEach(p => {
+              const insertProductQuery = `
+                INSERT INTO pd_product
+                  (purchase_debit_note_id, purchase_order_id, item_title, quantity, unit, amount, description,
+                   creation_date, modification_date, created_by, modified_by, status, cost_price, selling_price,
+                   qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand, qty_requested, qty_delivered,
+                   price, carton_qty, loose_qty, carton_price, gross_total, discount, total)
+                VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              `;
+              const productValues = [
+                newPDNId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
+                created_by, created_by, p.status, p.cost_price, p.selling_price, p.qty_updated, p.qty, p.product_id,
+                p.supplier_id, p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
+                p.carton_qty, p.loose_qty, p.carton_price, p.gross_total, p.discount, p.total
+              ];
+
+              db.query(insertProductQuery, productValues, err4 => {
+                if (err4) return res.status(400).send({ data: err4 });
+
+                productPending--;
+                if (productPending === 0) {
+                  createdPDNs.push({ old_gr_id: gr.goods_return_id, new_pdn_id: newPDNId });
+                  pending--;
+                  if (pending === 0) {
+                    return res.status(200).send({ msg: "Converted to Purchase Debit Notes successfully", data: createdPDNs });
+                  }
+                }
+              });
+            });
+          } else {
+            createdPDNs.push({ old_gr_id: gr.goods_return_id, new_pdn_id: newPDNId });
+            pending--;
+            if (pending === 0) {
+              return res.status(200).send({ msg: "Converted to Purchase Debit Notes successfully", data: createdPDNs });
+            }
+          }
+        });
+      });
+    });
+  });
+});
+
+app.post('/repeatPurchaseOrder', (req, res, next) => {
+    const { purchase_order_ids, created_by } = req.body;
+
+    if (!purchase_order_ids || !Array.isArray(purchase_order_ids)) {
+        return res.status(400).send({ msg: 'purchase_order_ids must be an array' });
+    }
+
+    // Escape and join IDs for the WHERE IN clause
+    const ids = purchase_order_ids.map(id => db.escape(id)).join(',');
+
+    // 1️⃣ Fetch all selected Purchase Orders for product line copying
+    // and to get the required data (like the old ID) for the response
+    const poQuery = `SELECT * FROM purchase_order WHERE purchase_order_id IN (${ids})`;
+
+    db.query(poQuery, (err, pos) => {
+        if (err) {
+            console.error(err);
+            return res.status(400).send({ data: err });
+        }
+
+        if (!pos.length) {
+            return res.status(404).send({ msg: 'No Purchase Orders found' });
+        }
+
+        const repeatedPos = [];
+        let pending = pos.length;
+
+        // Start a transaction or use a loop to handle multiple POs
+        pos.forEach(po => {
+            // 2️⃣ Use INSERT INTO SELECT to efficiently copy the PO header data
+            // purchase_order_id (AUTO_INCREMENT) is excluded from the column list
+            const insertHeaderQuery = `
+                INSERT INTO purchase_order (
+                    po_code, site_id, supplier_id, contact_id_supplier, delivery_terms, status, project_id,
+                    flag, creation_date, modification_date, created_by, modified_by, supplier_reference_no, 
+                    our_reference_no, shipping_method, payment_terms, delivery_date, po_date, 
+                    shipping_address_flat, shipping_address_street, shipping_address_country, 
+                    shipping_address_po_code, expense_id, staff_id, purchase_order_date, payment_status, 
+                    title, priority, follow_up_date, notes, supplier_inv_code, gst, gst_percentage, 
+                    delivery_to, contact, mobile, payment, project, tran_no, tran_date, contact_address1, 
+                    contact_address2, contact_address3, country, remarks, req_delivery_date, 
+                    contact_person, supplier_code, postal_code, sub_total, net_total, 
+                    yr_quote_date, purchase_item, currency, terms_purchase
+                )
+                SELECT 
+                    po_code, site_id, supplier_id, contact_id_supplier, delivery_terms, 'Repeated' AS status, project_id,
+                    flag, NOW() AS creation_date, NOW() AS modification_date, ? AS created_by, ? AS modified_by, supplier_reference_no, 
+                    our_reference_no, shipping_method, payment_terms, delivery_date, po_date, 
+                    shipping_address_flat, shipping_address_street, shipping_address_country, 
+                    shipping_address_po_code, expense_id, staff_id, NOW() AS purchase_order_date, payment_status, 
+                    title, priority, follow_up_date, notes, supplier_inv_code, gst, gst_percentage, 
+                    delivery_to, contact, mobile, payment, project, tran_no, tran_date, contact_address1, 
+                    contact_address2, contact_address3, country, remarks, req_delivery_date, 
+                    contact_person, supplier_code, postal_code, sub_total, net_total, 
+                    yr_quote_date, purchase_item, currency, terms_purchase
+                FROM purchase_order
+                WHERE purchase_order_id = ?
+            `;
+            
+            // Note: The status is hardcoded to 'Repeated' and dates are set to NOW()
+            const headerValues = [created_by, created_by, po.purchase_order_id];
+
+            db.query(insertHeaderQuery, headerValues, (err2, newPoResult) => {
+                if (err2) {
+                    console.error(err2);
+                    // Handle error and stop the loop/transaction properly in a real app
+                    return res.status(400).send({ data: err2 });
+                }
+
+                const newPoId = newPoResult.insertId;
+
+                // 3️⃣ Copy products for this new PO (assuming products are in 'po_product')
+                // This logic remains the same as it needs the newPoId
+                const productQuery = `SELECT * FROM po_product WHERE purchase_order_id = ?`;
+
+                db.query(productQuery, [po.purchase_order_id], (err3, products) => {
+                    if (err3) {
+                        console.error(err3);
+                        return res.status(400).send({ data: err3 });
+                    }
+
+                    if (products.length) {
+                        let productPending = products.length;
+
+                        products.forEach(p => {
+                            // You would replace this with the actual columns in your po_product table
+                            const insertProductQuery = `
+                                INSERT INTO po_product
+                                  (purchase_order_id, item_title, quantity, unit, amount, description,
+                                   creation_date, modification_date, created_by, modified_by, status,
+                                   cost_price, selling_price, qty_updated, qty, product_id, supplier_id,
+                                   gst, damage_qty, brand, qty_requested, qty_delivered, price,
+                                   carton_qty, loose_qty, carton_price, gross_total, discount, total)
+                                VALUES (?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                            `;
+
+                            const productValues = [
+                                newPoId, p.item_title, p.quantity, p.unit, p.amount, p.description,
+                                created_by, created_by, p.status, p.cost_price,
+                                p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id,
+                                p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
+                                p.carton_qty, p.loose_qty, p.carton_price, p.gross_total, p.discount, p.total
+                            ];
+
+                            db.query(insertProductQuery, productValues, err4 => {
+                                if (err4) {
+                                    console.error(err4);
+                                    return res.status(400).send({ data: err4 });
+                                }
+
+                                productPending--;
+                                if (productPending === 0) {
+                                    repeatedPos.push({ old_po_id: po.purchase_order_id, new_po_id: newPoId });
+                                    pending--;
+                                    if (pending === 0) {
+                                        return res.status(200).send({
+                                            data: repeatedPos,
+                                            msg: 'Purchase Orders repeated successfully'
+                                        });
+                                    }
+                                }
+                            });
+                        });
+                    } else {
+                        // No products, just push header
+                        repeatedPos.push({ old_po_id: po.purchase_order_id, new_po_id: newPoId });
+                        pending--;
+                        if (pending === 0) {
+                            return res.status(200).send({
+                                data: repeatedPos,
+                                msg: 'Purchase Orders repeated successfully'
+                            });
+                        }
+                    }
+                });
+            });
+        });
+    });
+});
+
+// NOTE: Assuming 'db' (MySQL connection) and 'app' (Express app) are defined.
+
+app.post('/ConvertToGra', (req, res, next) => {
+    
+    const { purchase_order_ids, created_by } = req.body;
+
+    if (!purchase_order_ids || !Array.isArray(purchase_order_ids)) {
+        return res.status(400).send({ msg: 'purchase_order_ids must be an array' });
+    }
+
+    const ids = purchase_order_ids.map(id => db.escape(id)).join(',');
+
+    // 1️⃣ Fetch all selected Purchase Orders (PO) to get data for copying line items
+    // and to iterate through the process.
+    const poQuery = `SELECT * FROM purchase_order WHERE purchase_order_id IN (${ids})`;
+
+    db.query(poQuery, (err, pos) => {
+        if (err) {
+            console.error(err);
+            return res.status(400).send({ data: err });
+        }
+
+        if (!pos.length) {
+            return res.status(404).send({ msg: 'No Purchase Orders found' });
+        }
+
+        const convertedReturns = [];
+        let pending = pos.length;
+
+        pos.forEach(po => {
+            // --- TRANSACTION START (Optional but recommended for data integrity) ---
+
+            // 2️⃣ Use INSERT INTO SELECT for efficient header creation in goodsreturn
+            const insertHeaderQuery = `
+                INSERT INTO goods_return (
+                    purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier,
+                    delivery_terms, status, project_id, flag, creation_date, modification_date, 
+                    created_by, modified_by, supplier_reference_no, our_reference_no, 
+                    shipping_method, payment_terms, delivery_date, po_date, 
+                    shipping_address_flat, shipping_address_street, shipping_address_country, 
+                    shipping_address_po_code, expense_id, staff_id, goods_receipt_date, 
+                    payment_status, title, priority, follow_up_date, notes, 
+                    supplier_inv_code, gst, gst_percentage, delivery_to, contact, mobile, 
+                    payment, project, tran_no, tran_date, contact_address1, 
+                    contact_address2, contact_address3, country, remarks, req_delivery_date, 
+                    contact_person, postal_code, sub_total, net_total
+                )
+                SELECT
+                    purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier,
+                    delivery_terms, 'Returned' AS status, project_id, flag, NOW() AS creation_date, NOW() AS modification_date,
+                    ? AS created_by, ? AS modified_by, supplier_reference_no, our_reference_no,
+                    shipping_method, payment_terms, delivery_date, po_date,
+                    shipping_address_flat, shipping_address_street, shipping_address_country,
+                    shipping_address_po_code, expense_id, staff_id, NOW() AS goods_receipt_date, 
+                    payment_status, title, priority, follow_up_date, notes,
+                    supplier_inv_code, gst, gst_percentage, delivery_to, contact, mobile,
+                    payment, project, tran_no, tran_date, contact_address1,
+                    contact_address2, contact_address3, country, remarks, req_delivery_date,
+                    contact_person, postal_code, sub_total, net_total
+                FROM purchase_order
+                WHERE purchase_order_id = ?
+            `;
+
+            const headerValues = [created_by, created_by, po.purchase_order_id];
+
+            db.query(insertHeaderQuery, headerValues, (err2, newGrnResult) => {
+                if (err2) {
+                    console.error(err2);
+                    // --- TRANSACTION ROLLBACK ---
+                    return res.status(400).send({ data: err2 });
+                }
+
+                const newGrnId = newGrnResult.insertId;
+
+                // 3️⃣ Copy products from PO → Goods Return Product Table (goodsreturn_product)
+                const productQuery = `SELECT * FROM po_product WHERE purchase_order_id = ?`;
+
+                db.query(productQuery, [po.purchase_order_id], (err3, products) => {
+                    if (err3) {
+                        console.error(err3);
+                        // --- TRANSACTION ROLLBACK ---
+                        return res.status(400).send({ data: err3 });
+                    }
+
+                    if (products.length) {
+                        let productPending = products.length;
+                        let productInsertError = false;
+
+                        products.forEach(p => {
+                            // You must ensure 'goodsreturn_product' has these columns
+                            const insertProductQuery = `
+                                INSERT INTO goods_return_product
+                                  (goods_return_id, purchase_order_id, item_title, quantity, unit, amount, description,
+                                   creation_date, modification_date, status, cost_price,
+                                   selling_price, qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand,
+                                   qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total,
+                                   discount, total)
+                                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                            `;
+
+                            const productValues = [
+                                newGrnId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
+                                p.creation_date,p.modification_date, p.status, p.cost_price,
+                                p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id,
+                                p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
+                                p.carton_qty, p.loose_qty, p.carton_price, p.gross_total, p.discount, p.total
+                            ];
+
+                            db.query(insertProductQuery, productValues, err4 => {
+                                if (err4) {
+                                    console.error(err4);
+                                    productInsertError = true;
+                                    // --- TRANSACTION ROLLBACK ---
+                                    if (pending > 0) { // Prevent multiple responses if error occurs
+                                        res.status(400).send({ data: err4 });
+                                        pending = 0; // Mark as done to prevent final success
+                                    }
+                                    return;
+                                }
+
+                                productPending--;
+                                if (productPending === 0 && !productInsertError) {
+                                    convertedReturns.push({ old_po_id: po.purchase_order_id, new_grn_id: newGrnId });
+                                    pending--;
+                                    if (pending === 0) {
+                                        // --- TRANSACTION COMMIT ---
+                                        return res.status(200).send({
+                                            data: convertedReturns,
+                                            msg: 'Purchase Orders converted to Goods Returns successfully'
+                                        });
+                                    }
+                                }
+                            });
+                        });
+                    } else {
+                        // No products in PO → Just insert GRN header
+                        convertedReturns.push({ old_po_id: po.purchase_order_id, new_grn_id: newGrnId });
+                        pending--;
+                        if (pending === 0) {
+                            // --- TRANSACTION COMMIT ---
+                            return res.status(200).send({
+                                data: convertedReturns,
+                                msg: 'Purchase Orders converted to Goods Returns successfully'
+                            });
+                        }
+                    }
+                });
+            });
+        });
+    });
+});
+
+router.post('/changeStatus', async (req, res) => {
+  try {
+    const { purchase_order_ids, status } = req.body;
+
+    if (!purchase_order_ids || !status) {
+      return res.status(400).json({ error: 'purchase_order_ids and status are required' });
+    }
+
+    // Ensure purchase_order_ids is an array
+    const ids = Array.isArray(purchase_order_ids) ? purchase_order_ids : [purchase_order_ids];
+
+    // Build placeholders for MySQL query
+    const placeholders = ids.map(() => '?').join(',');
+
+    const query = `
+      UPDATE purchase_order
+      SET status = ?
+      WHERE purchase_order_id IN (${placeholders})
+    `;
+
+    await db.execute(query, [status, ...ids]);
+
+    res.status(200).json({ message: 'Status updated successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.get("/recapPurchaseInvoice", async (req, res) => {
+  const { from, to } = req.query;
+
+  let query = `
+    SELECT 
+      s.company_name,
+      COUNT(p.purchase_invoice_id) AS total_invoices,
+      SUM(p.net_total) AS total_amount,
+      SUM(p.paid_amount) AS total_paid,
+      SUM(p.balance_amount) AS total_balance
+    FROM purchase_invoices p
+    LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  // ✅ Optional date filter
+  if (from && to) {
+    query += ` AND DATE(p.purchase_invoice_date) BETWEEN ? AND ?`;
+    params.push(from, to);
+  }
+
+  query += ` GROUP BY p.supplier_id ORDER BY total_amount DESC`;
+
+  try {
+    const [rows] = await db.query(query, params);
+    res.json({
+      success: true,
+      message: "Recap data fetched successfully",
+      data: rows,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Error fetching recap data" });
+  }
+});
+
+router.get('/recapPurchaseDebitNote', async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        s.supplier_id,
+        s.company_name,
+        COUNT(pdn.purchase_debit_note_id) AS total_notes,
+        SUM(pdn.net_total) AS total_amount,
+        SUM(CASE WHEN pdn.payment_status = 'Paid' THEN pdn.net_total ELSE 0 END) AS paid_amount,
+        SUM(CASE WHEN pdn.payment_status != 'Paid' THEN pdn.net_total ELSE 0 END) AS balance_amount,
+        MAX(pdn.purchase_debit_note_date) AS last_note_date
+      FROM purchase_debit_note pdn
+      LEFT JOIN supplier s ON s.supplier_id = pdn.supplier_id
+      WHERE pdn.flag = 1
+      GROUP BY s.supplier_id, s.company_name
+      ORDER BY last_note_date DESC
+    `;
+
+    db.query(sql, (err, result) => {
+      if (err) {
+        console.error('Error fetching Purchase Debit Note Recap:', err);
+        return res.status(500).json({ message: 'Database Error', error: err });
+      }
+      res.status(200).json(result);
+    });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    res.status(500).json({ message: 'Internal Server Error', error });
+  }
+});
+
+router.post('/addCostPurchaseInvoice', async (req, res) => {
+  const { purchase_invoice_id, operation_cost } = req.body;
+
+  if (!purchase_invoice_id || !operation_cost) {
+    return res.status(400).json({ error: 'Invoice ID and operation cost required' });
+  }
+
+  try {
+    // Update net_total by adding operation cost
+    const query = `
+      UPDATE purchase_invoice
+      SET net_total = net_total + ?, 
+          balance_amount = balance_amount + ? 
+      WHERE purchase_invoice_id = ?
+    `;
+    const [result] = await db.execute(query, [operation_cost, operation_cost, purchase_invoice_id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    res.json({ message: 'Operation cost added successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.post('/makePaymentPurchaseInvoice', async (req, res) => {
+  const { purchase_invoice_id, payment_amount } = req.body;
+
+  if (!purchase_invoice_id || !payment_amount) {
+    return res.status(400).json({ error: 'Invoice ID and payment amount required' });
+  }
+
+  try {
+    const [invoiceRows] = await db.execute(
+      `SELECT net_total, paid_amount, balance_amount FROM purchase_invoice WHERE purchase_invoice_id = ?`,
+      [purchase_invoice_id]
+    );
+
+    if (invoiceRows.length === 0) return res.status(404).json({ error: 'Invoice not found' });
+
+    const invoice = invoiceRows[0];
+    const newPaidAmount = parseFloat(invoice.paid_amount) + parseFloat(payment_amount);
+    const newBalance = parseFloat(invoice.net_total) - newPaidAmount;
+    const paymentStatus = newBalance <= 0 ? 'Paid' : 'Partial';
+
+    await db.execute(
+      `UPDATE purchase_invoice
+       SET paid_amount = ?, balance_amount = ?, payment_status = ?
+       WHERE purchase_invoice_id = ?`,
+      [newPaidAmount, newBalance, paymentStatus, purchase_invoice_id]
+    );
+
+    res.status(200).json({ message: 'Payment recorded successfully', paid_amount: newPaidAmount, balance_amount: newBalance, payment_status: paymentStatus });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 
 
 app.get('/secret-route', userMiddleware.isLoggedIn, (req, res, next) => {

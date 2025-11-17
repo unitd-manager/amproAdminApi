@@ -18,16 +18,16 @@ app.use(fileUpload({
 }));
 
 
-app.post('/getMainInvoice', (req, res, next) => {
+app.get('/getMainInvoice', (req, res, next) => {
   db.query(
     `SELECT i.*
     ,c.company_id
     ,c.company_name
   
-    FROM invoice i
+    FROM sales_return i
      LEFT JOIN (sales_order p) ON (i.sales_order_id = p.sales_order_id)
     LEFT JOIN (company c) 	ON (p.company_id = c.company_id)
-    Where i.invoice_date=${db.escape(req.body.invoice_date)} ORDER BY i.invoice_code DESC`,
+     WHERE i.sales_return_id != '' ORDER BY i.sales_return_code DESC`,
     (err, result) => {
       if (err) {
         console.log('error: ', err)
@@ -50,16 +50,16 @@ app.post('/getMainInvoiceSearch', (req, res, next) => {
   let conditions = [];
   let params = [];
   
-  if (req.body.invoice_code) {
-    conditions.push("s.invoice_code LIKE ?");
-    params.push(`%${req.body.invoice_code}%`);
+  if (req.body.sales_return_code) {
+    conditions.push("s.sales_return_code LIKE ?");
+    params.push(`%${req.body.sales_return_code}%`);
   }
   if (req.body.from_date) {
-    conditions.push("s.invoice_date >= ?");
+    conditions.push("s.sales_return_date >= ?");
     params.push(req.body.from_date);
   }
   if (req.body.to_date) {
-    conditions.push("s.invoice_date <= ?");
+    conditions.push("s.sales_return_date <= ?");
     params.push(req.body.to_date);
   }
   if (req.body.customer) {
@@ -76,14 +76,66 @@ app.post('/getMainInvoiceSearch', (req, res, next) => {
   db.query(`
     SELECT 
       s.*, c.company_name, cu.currency_code, co.first_name AS contact_person
-    FROM invoice s
+    FROM sales_return s
     LEFT JOIN (company c) 	ON (s.company_id = c.company_id)
     LEFT JOIN company cd ON cd.company_id = s.delivery_id
     LEFT JOIN contact co ON co.company_id = c.company_id
     LEFT JOIN currency cu ON cu.currency_id = s.currency_id
     ${whereClause}
     AND s.status != LOWER('Cancelled')
-ORDER BY s.invoice_id DESC`,
+ORDER BY s.sales_return_id DESC`,
+    params,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({ data: err, msg: 'failed' });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+  
+});
+
+
+app.post('/getMainCreditNoteSearch', (req, res, next) => {
+  let conditions = [];
+  let params = [];
+  
+  if (req.body.credit_note_code) {
+    conditions.push("s.credit_note_code LIKE ?");
+    params.push(`%${req.body.credit_note_code}%`);
+  }
+  if (req.body.from_date) {
+    conditions.push("s.credit_note_date >= ?");
+    params.push(req.body.from_date);
+  }
+  if (req.body.to_date) {
+    conditions.push("s.credit_note_date <= ?");
+    params.push(req.body.to_date);
+  }
+  if (req.body.customer) {
+    conditions.push("c.company_name LIKE ?");
+    params.push(`%${req.body.customer}%`);
+  }
+  if (req.body.status) {
+    conditions.push("s.status = ?");
+    params.push(req.body.status);
+  }
+  
+  let whereClause = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
+  
+  db.query(`
+    SELECT 
+      s.*, c.company_name, cu.currency_code, co.first_name AS contact_person
+    FROM credit_note s
+    LEFT JOIN (company c) 	ON (s.company_id = c.company_id)
+    LEFT JOIN company cd ON cd.company_id = s.delivery_id
+    LEFT JOIN contact co ON co.company_id = c.company_id
+    LEFT JOIN currency cu ON cu.currency_id = s.currency_id
+    ${whereClause}
+    AND s.status != LOWER('Cancelled')
+ORDER BY s.credit_note_id DESC`,
     params,
     (err, result) => {
       if (err) {
@@ -100,7 +152,7 @@ ORDER BY s.invoice_id DESC`,
    app.post('/edit-TabQuoteLine', (req, res, next) => {
    
     db.query(
-      `UPDATE  invoice_item
+      `UPDATE  sales_return_item
             SET product_id=${db.escape(req.body.product_id)}
             ,quantity=${db.escape(req.body.quantity)}
             ,loose_qty=${db.escape(req.body.loose_qty)}
@@ -110,9 +162,9 @@ ORDER BY s.invoice_id DESC`,
             ,wholesale_price=${db.escape(req.body.wholesale_price)}
             ,gross_total=${db.escape(req.body.gross_total)}
             ,total=${db.escape(req.body.total)}
-            ,foc=${db.escape(req.body.foc)}
+             ,foc=${db.escape(req.body.foc)}
       
-            WHERE invoice_item_id =  ${db.escape(req.body. invoice_item_id)}`,
+            WHERE sales_return_item_id =  ${db.escape(req.body. sales_return_item_id)}`,
             (err, result) => {
               if (err) {
                 console.log("error: ", err);
@@ -126,39 +178,6 @@ ORDER BY s.invoice_id DESC`,
             }
           );
         });
-        
-        
-          app.post('/edit-TabCreditLine', (req, res, next) => {
-   
-    db.query(
-      `UPDATE  credit_note_item
-            SET product_id=${db.escape(req.body.product_id)}
-            ,quantity=${db.escape(req.body.quantity)}
-            ,loose_qty=${db.escape(req.body.loose_qty)}
-            ,carton_qty=${db.escape(req.body.carton_qty)}
-            ,carton_price=${db.escape(req.body.carton_price)}
-            ,discount_value=${db.escape(req.body.discount_value)}
-            ,wholesale_price=${db.escape(req.body.wholesale_price)}
-            ,gross_total=${db.escape(req.body.gross_total)}
-            ,total=${db.escape(req.body.total)}
-            ,foc=${db.escape(req.body.foc)}
-      
-            WHERE credit_note_item_id =  ${db.escape(req.body.credit_note_item_id)}`,
-            (err, result) => {
-              if (err) {
-                console.log("error: ", err);
-                return;
-              } else {
-                return res.status(200).send({
-                  data: result,
-                  msg: "Success",
-                });
-              }
-            }
-          );
-        });
-        
-        
         
         
         
@@ -175,7 +194,6 @@ ORDER BY s.invoice_id DESC`,
             ,wholesale_price=${db.escape(req.body.wholesale_price)}
             ,gross_total=${db.escape(req.body.gross_total)}
             ,total=${db.escape(req.body.total)}
-            ,foc=${db.escape(req.body.foc)}
       
             WHERE delivery_order_item_id =  ${db.escape(req.body. delivery_order_item_id)}`,
             (err, result) => {
@@ -250,11 +268,11 @@ app.post('/getSalesorderById', (req, res, next) => {
     c.company_name,
     c.customer_code,
     c.address_street,
+    c.address_town,
         c.address_street1,
     c.address1,
     c.address2,
     c.phone,
-    c.address_town,
     c.address_state,
     c.address_country,
     c.address_po_code,
@@ -271,13 +289,13 @@ app.post('/getSalesorderById', (req, res, next) => {
     cu.currency_name,
     cu.currency_rate,
     co.first_name AS contact_person 
-  From invoice s
+  From sales_return s
    LEFT JOIN company c ON (c.company_id = s.company_id)
       LEFT JOIN company cd ON (cd.company_id = s.delivery_id)
 
        LEFT JOIN contact co ON (co.company_id = c.company_id)
   LEFT JOIN currency cu ON (cu.currency_id = s.currency_id)
-  Where s.invoice_id=${db.escape(req.body.invoice_id)}`,
+  Where s.sales_return_id=${db.escape(req.body.sales_return_id)}`,
   (err, result) => {
     if (err) {
       console.log('error: ', err);
@@ -293,46 +311,64 @@ app.post('/getSalesorderById', (req, res, next) => {
 }
   }
 );
-});  
+});
 
 
-app.get('/getInvoicesByCompany', (req, res) => {
-  const companyId = req.query.company_id;
-  if (!companyId) return res.status(400).send({ msg: 'company_id is required' });
+app.post('/getCreditNoteById', (req, res, next) => {
+  db.query(` Select 
+  s.*,
+    c.company_name,
+    c.customer_code,
+    c.address_street,
+    c.address_town,
+    c.address_state,
+    c.address_country,
+    c.address_po_code,
+    c.tax_type,
+       cd.billing_address_street,
+    cd.billing_address_town,
+    cd.billing_address_state,
+    cd.billing_address_country,
+    cd.billing_address_po_code,
+        cd.address_street1,
+    cd.address1,
+    cd.address2,
+    cd.phone,
+    c.notes,
+    cu.currency_id,
+    cu.currency_code,
+    cu.currency_name,
+    cu.currency_rate,
+    co.first_name AS contact_person 
+  From credit_note s
+   LEFT JOIN company c ON (c.company_id = s.company_id)
+      LEFT JOIN company cd ON (cd.company_id = s.delivery_id)
 
-  const sql = `
-    SELECT 
-      i.invoice_id,
-      i.invoice_code AS invoice_no,
-      i.invoice_date,
-      i.invoice_due_date,
-      i.company_id,
-      i.invoice_amount AS credit_amount,
-      IFNULL(SUM(r.amount), 0) AS debit_amount,
-      (i.invoice_amount - IFNULL(SUM(r.amount), 0)) AS balance_amount,
-      DATEDIFF(CURDATE(), i.invoice_date) AS carry_days,
-      DATEDIFF(i.invoice_due_date, i.invoice_date) AS credit_days,
-      i.invoice_type AS tran_type
-    FROM invoice i
-    LEFT JOIN receipt r ON r.invoice_id = i.invoice_id
-    WHERE i.company_id = ?
-    GROUP BY i.invoice_id
-    HAVING balance_amount > 0
-    ORDER BY i.invoice_date DESC
-  `;
-
-  // IMPORTANT: bind the parameter array
-  db.query(sql, [companyId], (err, result) => {
-    if (err) return res.status(400).send({ data: err, msg: 'failed' });
-    return res.status(200).send({ data: result, msg: 'Success' });
-  });
+       LEFT JOIN contact co ON (co.company_id = c.company_id)
+  LEFT JOIN currency cu ON (cu.currency_id = s.currency_id)
+  Where s.credit_note_id=${db.escape(req.body.credit_note_id)}`,
+  (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+});
+}
+  }
+);
 });
 
 app.post('/convertToSalesReturn', (req, res) => {
-  const { invoice_id,sales_return_code } = req.body;
+  const { sales_return_id,sales_return_code } = req.body;
 
   // 1. Get invoice
-  db.query('SELECT * FROM invoice WHERE invoice_id = ?', [invoice_id], (err, invoiceRows) => {
+  db.query('SELECT * FROM invoice WHERE sales_return_id = ?', [sales_return_id], (err, invoiceRows) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ msg: 'Server error' });
@@ -342,11 +378,11 @@ app.post('/convertToSalesReturn', (req, res) => {
 
     // 2. Create sales_return
     db.query(
-      'INSERT INTO sales_return (company_id, invoice_id, sales_return_date, sales_return_amount, status, sub_total, tax, delivery_id, currency_id, sales_id,sales_return_code) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?,?)',
+      'INSERT INTO sales_return (company_id, sales_return_id, sales_return_date, sales_return_amount, status, sub_total, tax, delivery_id, currency_id, sales_id,sales_return_code) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?,?)',
       [
         invoice.company_id,
-        invoice.invoice_id,
-        invoice.invoice_amount,
+        invoice.sales_return_id,
+        invoice.sales_return_amount,
         'Pending',
         invoice.sub_total,
         invoice.tax,
@@ -362,8 +398,8 @@ app.post('/convertToSalesReturn', (req, res) => {
         }
         const sales_return_id = result.insertId;
 
-        // 3. Get invoice items
-        db.query('SELECT * FROM invoice_item WHERE invoice_id = ?', [invoice_id], (err, items) => {
+        // 3. Get sales_return items
+        db.query('SELECT * FROM sales_return_item WHERE sales_return_id = ?', [sales_return_id], (err, items) => {
           if (err) {
             console.error(err);
             return res.status(500).json({ msg: 'Server error' });
@@ -410,10 +446,10 @@ app.post('/convertToSalesReturn', (req, res) => {
 
 
 app.post('/convertToDelivryVerification', (req, res) => {
-  const { invoice_id } = req.body;
+  const { sales_return_id } = req.body;
 
   // 1. Get invoice
-  db.query('SELECT * FROM invoice WHERE invoice_id = ?', [invoice_id], (err, invoiceRows) => {
+  db.query('SELECT * FROM invoice WHERE sales_return_id = ?', [sales_return_id], (err, invoiceRows) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ msg: 'Server error' });
@@ -423,12 +459,12 @@ app.post('/convertToDelivryVerification', (req, res) => {
 
     // 2. Create delivery_verification
     db.query(
-      'INSERT INTO delivery_verification (company_id, invoice_id, delivery_verification_date, delivery_verification_amount, status, sub_total, tax, delivery_id, currency_id, sales_id,paid_amount,balance_amount,delivery_verification_code) VALUES (?,?, NOW(),?,?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO delivery_verification (company_id, sales_return_id, delivery_verification_date, delivery_verification_amount, status, sub_total, tax, delivery_id, currency_id, sales_id,paid_amount,balance_amount,delivery_verification_code) VALUES (?,?, NOW(),?,?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         invoice.company_id,
-        invoice.invoice_id,
-        invoice.invoice_amount,
-        'Not Delivered',
+        invoice.sales_return_id,
+        invoice.sales_return_amount,
+        'Pending',
         invoice.sub_total,
         invoice.tax,
         invoice.delivery_id,
@@ -436,7 +472,7 @@ app.post('/convertToDelivryVerification', (req, res) => {
         invoice.sales_id,
         invoice.paid_amount,
         invoice.balance_amount,
-        invoice.invoice_code
+        invoice.sales_return_code
         
       ],
       (err, result) => {
@@ -446,8 +482,8 @@ app.post('/convertToDelivryVerification', (req, res) => {
         }
         const delivery_verification_id = result.insertId;
 
-        // 3. Get invoice items
-        db.query('SELECT * FROM invoice_item WHERE invoice_id = ?', [invoice_id], (err, items) => {
+        // 3. Get sales_return items
+        db.query('SELECT * FROM sales_return_item WHERE sales_return_id = ?', [sales_return_id], (err, items) => {
           if (err) {
             console.error(err);
             return res.status(500).json({ msg: 'Server error' });
@@ -493,16 +529,66 @@ app.post('/convertToDelivryVerification', (req, res) => {
 });
 
 
+app.post('/getDeliveryVerification', (req, res, next) => {
+  
+  let conditions = [];
+  let params = [];
+  
+  if (req.body.tran_no) {
+    conditions.push("s.delivery_verification_code LIKE ?");
+    params.push(`%${req.body.tran_no}%`);
+  }
+  if (req.body.from_date) {
+    conditions.push("s.delivery_verification_date >= ?");
+    params.push(req.body.from_date);
+  }
+  if (req.body.to_date) {
+    conditions.push("s.delivery_verification_date <= ?");
+    params.push(req.body.to_date);
+  }
+  if (req.body.customer) {
+    conditions.push("c.company_name LIKE ?");
+    params.push(`%${req.body.customer}%`);
+  }
+  if (req.body.status) {
+    conditions.push("s.status = ?");
+    params.push(req.body.status);
+  }
+  
+  let whereClause = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
+  
+  db.query(`
+    SELECT 
+      s.*, c.company_name, cu.currency_code, co.first_name AS contact_person
+    FROM delivery_verification s
+    LEFT JOIN company c ON c.company_id = s.company_id
+    LEFT JOIN company cd ON cd.company_id = s.delivery_id
+    LEFT JOIN contact co ON co.company_id = c.company_id
+    LEFT JOIN currency cu ON cu.currency_id = s.currency_id
+    ${whereClause}`,
+    params,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({ data: err, msg: 'failed' });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+  
+});
+
 app.post("/repeatInvoice", async (req, res) => {
-  const { invoice_id, invoice_code } = req.body;
-  if (!invoice_id || !invoice_code) {
-    return res.status(400).send({ msg: "invoice_id and invoice_code are required" });
+  const { sales_return_id, sales_return_code } = req.body;
+  if (!sales_return_id || !sales_return_code) {
+    return res.status(400).send({ msg: "sales_return_id and sales_return_code are required" });
   }
 
   try {
     // 1. Fetch the original sales order
     const [originalOrder] = await new Promise((resolve, reject) => {
-      db.query("SELECT * FROM invoice WHERE invoice_id = ?", [invoice_id], (err, result) => {
+      db.query("SELECT * FROM invoice WHERE sales_return_id = ?", [sales_return_id], (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });
@@ -514,17 +600,17 @@ app.post("/repeatInvoice", async (req, res) => {
 
     // 2. Fetch the original sales order items
     const originalItems = await new Promise((resolve, reject) => {
-      db.query("SELECT * FROM invoice_item WHERE invoice_id = ?", [invoice_id], (err, result) => {
+      db.query("SELECT * FROM sales_return_item WHERE sales_return_id = ?", [sales_return_id], (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });
     });
 
-    // 3. Use the invoice_code from the frontend as the new tran_no (or use a separate field if you have one)
+    // 3. Use the sales_return_code from the frontend as the new tran_no (or use a separate field if you have one)
     const newOrderData = {
       ...originalOrder,
-      invoice_id: undefined, // Let DB auto-increment
-      invoice_code: invoice_code,    // Use invoice_code as the new tran_no
+      sales_return_id: undefined, // Let DB auto-increment
+      sales_return_code: sales_return_code,    // Use sales_return_code as the new tran_no
       status: "Open",
       creation_date: new Date(),
       // Set other fields as needed (e.g., reset printed, etc.)
@@ -554,8 +640,8 @@ app.post("/repeatInvoice", async (req, res) => {
         item.foc,
       ]);
       const insertItemsSql = `
-        INSERT INTO invoice_item (
-          quantity, invoice_id, carton_qty, loose_qty, carton_price, wholesale_price, product_id, total, gross_total, foc
+        INSERT INTO sales_return_item (
+          quantity, sales_return_id, carton_qty, loose_qty, carton_price, wholesale_price, product_id, total, gross_total, foc
         ) VALUES ?`;
       await new Promise((resolve, reject) => {
         db.query(insertItemsSql, [newItemsData], (err, result) => {
@@ -567,8 +653,8 @@ app.post("/repeatInvoice", async (req, res) => {
 
     return res.status(201).send({
       msg: "Invoice repeated successfully.",
-      new_invoice_id: newSalesOrderId,
-      new_tran_no: invoice_code,
+      new_sales_return_id: newSalesOrderId,
+      new_tran_no: sales_return_code,
     });
   } catch (err) {
     console.error("Error repeating invoice:", err.message);
@@ -581,13 +667,13 @@ app.post("/repeatInvoice", async (req, res) => {
 
 
 app.get('/getInvoiceSummary', (req, res, next) => {
-  db.query(`select i.invoice_id
-  ,i.invoice_code 
+  db.query(`select i.sales_return_id
+  ,i.sales_return_code 
   ,ir.amount as received
-  ,(select(i.invoice_amount-ir.amount)) as balance
+  ,(select(i.sales_return_amount-ir.amount)) as balance
   ,i.invoice_due_date
-  ,i.invoice_date
-  ,i.invoice_amount
+  ,i.sales_return_date
+  ,i.sales_return_amount
   ,i.selling_company
   ,i.start_date
   ,i.end_date
@@ -601,10 +687,10 @@ app.get('/getInvoiceSummary', (req, res, next) => {
    ,i.invoice_terms
    ,i.attention
    ,i.status
- from invoice i
-  LEFT JOIN invoice_receipt_history ir ON ir.invoice_id=i.invoice_id
-WHERE i.invoice_id !='' AND i.status != LOWER('Cancelled')
-ORDER BY i.invoice_date DESC`,
+ from sales_return i
+  LEFT JOIN invoice_receipt_history ir ON ir.sales_return_id=i.sales_return_id
+WHERE i.sales_return_id !='' AND i.status != LOWER('Cancelled')
+ORDER BY i.sales_return_date DESC`,
     (err, result) => {
 
       if (err) {
@@ -625,17 +711,17 @@ ORDER BY i.invoice_date DESC`,
 
 
 app.post("/generateReceiptFromSalesOrder", async (req, res, next) => {
-  const { invoice_id, company_id, receipt_code, amount } = req.body;
+  const { sales_return_id, company_id, receipt_code, amount } = req.body;
 
-  if (!invoice_id || !receipt_code) {
+  if (!sales_return_id || !receipt_code) {
     return res.status(400).send({
-      msg: "invoice_id, company_id, and receipt_code are required",
+      msg: "sales_return_id, company_id, and receipt_code are required",
     });
   }
 
   try {
     const invoiceData = {
-      invoice_id,
+      sales_return_id,
       receipt_code,
       amount,
       company_id,
@@ -652,14 +738,14 @@ app.post("/generateReceiptFromSalesOrder", async (req, res, next) => {
     });
 
     const updateSalesOrderStatusSql = `
-      UPDATE invoice
+      UPDATE sales_return
       SET status = 'Paid',
           balance_amount = 0,
           paid_amount = ?
-      WHERE invoice_id = ?`;
+      WHERE sales_return_id = ?`;
 
     await new Promise((resolve, reject) => {
-      db.query(updateSalesOrderStatusSql, [amount, invoice_id], (err, result) => {
+      db.query(updateSalesOrderStatusSql, [amount, sales_return_id], (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });
@@ -667,7 +753,7 @@ app.post("/generateReceiptFromSalesOrder", async (req, res, next) => {
 
     return res.status(201).send({
       msg: "Receipt created and invoice marked as 'Paid'.",
-      invoice_id,
+      sales_return_id,
     });
   } catch (err) {
     console.error("Error generating receipt:", err.message);
@@ -713,7 +799,7 @@ app.post("/generateReceiptFromSalesOrder", async (req, res, next) => {
 
 
    app.post('/getQuoteLineItemsById', (req, res, next) => {
-  const salesOrderId = db.escape(req.body.invoice_id);
+  const salesOrderId = db.escape(req.body.sales_return_id);
 
   const query = `
     SELECT 
@@ -727,9 +813,38 @@ app.post("/generateReceiptFromSalesOrder", async (req, res, next) => {
       c.carton_price AS Cprice,
       c.carton_qty AS Cqty
      
-    FROM invoice_item qt 
+    FROM sales_return_item qt 
     LEFT JOIN product c ON c.product_id = qt.product_id
-    WHERE qt.invoice_id = ${salesOrderId}
+    WHERE qt.sales_return_id = ${salesOrderId}
+  `;
+
+  db.query(query, (err, result) => {
+    if (err) {
+      return res.status(400).send({ msg: 'No result found' });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
+});
+
+   app.post('/getCreditLineItemsById', (req, res, next) => {
+  const salesOrderId = db.escape(req.body.credit_note_id);
+
+  const query = `
+    SELECT 
+      qt.*, 
+      c.title AS product_name,
+      c.product_code,
+      c.unit,
+      c.pcs_per_carton,
+      c.purchase_unit_cost,
+      c.wholesale_price AS whole_price,
+      c.carton_price AS Cprice,
+      c.carton_qty AS Cqty
+     
+    FROM credit_note_item qt 
+    LEFT JOIN product c ON c.product_id = qt.product_id
+    WHERE qt.credit_note_id = ${salesOrderId}
   `;
 
   db.query(query, (err, result) => {
@@ -743,8 +858,8 @@ app.post("/generateReceiptFromSalesOrder", async (req, res, next) => {
 
 app.post('/deleteProjectQuote', (req, res, next) => {
 
-  let data = { invoice_item_id: req.body. invoice_item_id};
-  let sql = "DELETE FROM  invoice_item WHERE ?";
+  let data = { sales_return_item_id: req.body. sales_return_item_id};
+  let sql = "DELETE FROM  sales_return_item WHERE ?";
   let query = db.query(sql, data,(err, result) => {
     if (err) {
       console.log('error: ', err)
@@ -761,7 +876,25 @@ app.post('/deleteProjectQuote', (req, res, next) => {
   });
 });
 
+app.post('/deleteCreditNote', (req, res, next) => {
 
+  let data = { credit_note_item_id: req.body. credit_note_item_id};
+  let sql = "DELETE FROM  credit_note_item WHERE ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+          });
+    }
+  });
+});
 app.post('/deleteDeliveryItem', (req, res, next) => {
 
   let data = { delivery_order_item_id: req.body.delivery_order_item_id};
@@ -785,17 +918,17 @@ app.post('/deleteDeliveryItem', (req, res, next) => {
 
 app.post('/getInvoiceItemsById', (req, res, next) => {
   db.query(`SELECT it.item_title,
-  it.invoice_item_id,
-i.invoice_id,
+  it.sales_return_item_id,
+i.sales_return_id,
 it.description,
 it.total_cost,
 it.unit,
 it.qty,
 it.unit_price,
 it.remarks
-FROM invoice_item it
-LEFT JOIN (invoice i) ON (i.invoice_id=it.invoice_id)
-WHERE i.invoice_id = ${db.escape(req.body.invoice_id)}`,
+FROM sales_return_item it
+LEFT JOIN (sales_return i) ON (i.sales_return_id=it.sales_return_id)
+WHERE i.sales_return_id = ${db.escape(req.body.sales_return_id)}`,
           (err, result) => {
        
       if (result.length === 0) {
@@ -814,11 +947,11 @@ WHERE i.invoice_id = ${db.escape(req.body.invoice_id)}`,
 });
 
 app.post('/getInvoiceById', (req, res, next) => {
-  db.query(`select i.invoice_id
-  ,i.invoice_code  
+  db.query(`select i.sales_return_id
+  ,i.sales_return_code  
   ,i.status
-  ,i.invoice_date
-   ,i.invoice_amount
+  ,i.sales_return_date
+   ,i.sales_return_amount
    ,i.gst_percentage
    ,i.gst_value
    ,i.discount
@@ -833,7 +966,7 @@ app.post('/getInvoiceById', (req, res, next) => {
      ,i.attention
      ,i.site_code
      ,i.payment_terms
-   from invoice i
+   from sales_return i
   LEFT JOIN orders o ON o.order_id=i.order_id
  WHERE i.order_id= ${db.escape(req.body.order_id)} AND i.status != LOWER('Cancelled')`,
     (err, result) => {
@@ -884,7 +1017,7 @@ app.post('/getInvoiceorderById', (req, res, next) => {
 
        LEFT JOIN contact co ON (co.company_id = c.company_id)
   LEFT JOIN currency cu ON (cu.currency_id = s.currency_id)
-  Where s.invoice_id=${db.escape(req.body.invoice_id)}`,
+  Where s.sales_return_id=${db.escape(req.body.sales_return_id)}`,
   (err, result) => {
     if (err) {
       console.log('error: ', err);
@@ -905,11 +1038,11 @@ app.post('/getInvoiceorderById', (req, res, next) => {
 
 
 app.post('/getInvoicesById', (req, res, next) => {
-  db.query(`select i.invoice_id
-  ,i.invoice_code  
+  db.query(`select i.sales_return_id
+  ,i.sales_return_code  
   ,i.status
-  ,i.invoice_date
-   ,i.invoice_amount
+  ,i.sales_return_date
+   ,i.sales_return_amount
    ,i.gst_value
    ,i.discount
    ,i.quote_code
@@ -923,9 +1056,9 @@ app.post('/getInvoicesById', (req, res, next) => {
      ,i.attention
      ,i.site_code
      ,i.payment_terms
-   from invoice i
+   from sales_return i
   LEFT JOIN orders o ON o.order_id=i.order_id
- WHERE i.invoice_id= ${db.escape(req.body.invoice_id)} AND i.status != LOWER('Cancelled')`,
+ WHERE i.sales_return_id= ${db.escape(req.body.sales_return_id)} AND i.status != LOWER('Cancelled')`,
     (err, result) => {
 
       if (err) {
@@ -946,11 +1079,11 @@ app.post('/getInvoicesById', (req, res, next) => {
 });
 
 app.post('/getProjectInvoiceById', (req, res, next) => {
-  db.query(`select i.invoice_id
-  ,i.invoice_code  
+  db.query(`select i.sales_return_id
+  ,i.sales_return_code  
   ,i.status
-  ,i.invoice_date
-   ,i.invoice_amount
+  ,i.sales_return_date
+   ,i.sales_return_amount
    ,i.gst_value
    ,i.discount
    ,i.quote_code
@@ -964,7 +1097,7 @@ app.post('/getProjectInvoiceById', (req, res, next) => {
      ,i.attention
      ,i.site_code
      ,i.payment_terms
-   from invoice i
+   from sales_return i
   LEFT JOIN orders o ON o.order_id=i.order_id
  WHERE o.sales_order_id = ${db.escape(req.body.sales_order_id)} AND i.status != LOWER('Cancelled')`,
     (err, result) => {
@@ -988,11 +1121,11 @@ app.post('/getProjectInvoiceById', (req, res, next) => {
 
 
 app.post('/getProjectInvoicePdf', (req, res, next) => {
-  db.query(`select i.invoice_id
-  ,i.invoice_code  
+  db.query(`select i.sales_return_id
+  ,i.sales_return_code  
   ,i.status
-  ,i.invoice_date
-   ,i.invoice_amount
+  ,i.sales_return_date
+   ,i.sales_return_amount
    ,i.gst_value
    ,i.discount
    ,i.quote_code
@@ -1009,11 +1142,11 @@ app.post('/getProjectInvoicePdf', (req, res, next) => {
      ,it.item_title
      ,it.description
      ,it.total_cost
-     from invoice_item it
+     from sales_return_item it
     
-    LEFT JOIN invoice i ON it.invoice_id=i.invoice_id
+    LEFT JOIN sales_return i ON it.sales_return_id=i.sales_return_id
     LEFT JOIN orders o ON o.order_id=i.order_id
-    WHERE i.invoice_id=${db.escape(req.body.invoice_id)} AND i.status != LOWER('Cancelled')
+    WHERE i.sales_return_id=${db.escape(req.body.sales_return_id)} AND i.status != LOWER('Cancelled')
     `,
     (err, result) => {
 
@@ -1032,6 +1165,20 @@ app.post('/getProjectInvoicePdf', (req, res, next) => {
 
     }
   );
+});
+
+app.post('/deleteSalesCredit', (req, res, next) => {
+  let ids = req.body.credit_note_id.split(","); // ["33","32"]
+
+  let sql = "DELETE FROM credit_note WHERE credit_note_id IN (?)";
+  db.query(sql, [ids], (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({ data: err, msg: 'failed' });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
+    }
+  });
 });
 
 
@@ -1070,16 +1217,16 @@ app.post('/getReceiptCancel', (req, res, next) => {
 }); 
 
 app.post('/editSalesOrder', (req, res, next) => {
-  db.query(`UPDATE invoice
+  db.query(`UPDATE sales_return
             SET company_id=${db.escape(req.body.company_id)}
             ,currency_id=${db.escape(req.body.currency_id)}
               ,delivery_id=${db.escape(req.body.delivery_id)}
             ,sales_id=${db.escape(req.body.sales_id)}
-            ,invoice_code=${db.escape(req.body.invoice_code)}
-            ,invoice_date=${db.escape(req.body.invoice_date)}
+            ,sales_return_code=${db.escape(req.body.sales_return_code)}
+            ,sales_return_date=${db.escape(req.body.sales_return_date)}
             ,modification_date=${db.escape(req.body.modification_date)}
             ,modified_by=${db.escape(req.body.modified_by)}
-            WHERE invoice_id = ${db.escape(req.body.invoice_id)}`,
+            WHERE sales_return_id = ${db.escape(req.body.sales_return_id)}`,
             (err, result) => {
               if (err) {
                 console.log('error: ', err);
@@ -1098,6 +1245,33 @@ app.post('/editSalesOrder', (req, res, next) => {
         });
         
         
+        app.post('/editcreditnote', (req, res, next) => {
+  db.query(`UPDATE credit_note
+            SET company_id=${db.escape(req.body.company_id)}
+            ,currency_id=${db.escape(req.body.currency_id)}
+              ,delivery_id=${db.escape(req.body.delivery_id)}
+            ,sales_id=${db.escape(req.body.sales_id)}
+            ,credit_note_code=${db.escape(req.body.credit_note_code)}
+            ,credit_note_date=${db.escape(req.body.credit_note_date)}
+            ,modification_date=${db.escape(req.body.modification_date)}
+            ,modified_by=${db.escape(req.body.modified_by)}
+            WHERE credit_note_id = ${db.escape(req.body.credit_note_id)}`,
+            (err, result) => {
+              if (err) {
+                console.log('error: ', err);
+                return res.status(400).send({
+                  data: err,
+                  msg: 'failed',
+                });
+              } else {
+                return res.status(200).send({
+                  data: result,
+                  msg: 'Success',
+          });
+        }
+            }
+          );
+        });
         
         app.post('/editDeliveryOrder', (req, res, next) => {
           db.query(`UPDATE delivery_order
@@ -1131,7 +1305,7 @@ app.post('/editSalesOrder', (req, res, next) => {
 app.post('/editInvoiceStatus', (req, res, next) => {
   db.query(`UPDATE invoice 
             SET status = ${db.escape(req.body.status)}
-             WHERE invoice_id =  ${db.escape(req.body.invoice_id)}`,
+             WHERE sales_return_id =  ${db.escape(req.body.sales_return_id)}`,
     (err, result) => {
       if (err) {
         return res.status(400).send({
@@ -1149,11 +1323,11 @@ app.post('/editInvoiceStatus', (req, res, next) => {
 });
 
 app.post('/getInvoiceCancel', (req, res, next) => {
-  db.query(`select i.invoice_id
-  ,i.invoice_code  
+  db.query(`select i.sales_return_id
+  ,i.sales_return_code  
   ,i.status
-  ,i.invoice_date
-   ,i.invoice_amount
+  ,i.sales_return_date
+   ,i.sales_return_amount
    ,i.gst_value
    ,i.discount
    ,i.quote_code
@@ -1165,7 +1339,7 @@ app.post('/getInvoiceCancel', (req, res, next) => {
     ,i.reference
      ,i.invoice_terms
      ,i.attention
-   from invoice i
+   from sales_return i
   LEFT JOIN orders o ON o.order_id=i.order_id
  WHERE i.order_id= ${db.escape(req.body.order_id)} AND i.status = LOWER('Cancelled')`,
     (err, result) => {
@@ -1188,11 +1362,11 @@ app.post('/getInvoiceCancel', (req, res, next) => {
 });
 
 app.post('/getProjectInvoiceCancel', (req, res, next) => {
-  db.query(`select i.invoice_id
-  ,i.invoice_code  
+  db.query(`select i.sales_return_id
+  ,i.sales_return_code  
   ,i.status
-  ,i.invoice_date
-   ,i.invoice_amount
+  ,i.sales_return_date
+   ,i.sales_return_amount
    ,i.gst_value
    ,i.discount
    ,i.quote_code
@@ -1204,7 +1378,7 @@ app.post('/getProjectInvoiceCancel', (req, res, next) => {
     ,i.reference
      ,i.invoice_terms
      ,i.attention
-   from invoice i
+   from sales_return i
   LEFT JOIN orders o ON o.order_id=i.order_id
  WHERE o.sales_order_id= ${db.escape(req.body.sales_order_id)} AND i.status = LOWER('Cancelled')`,
     (err, result) => {
@@ -1228,14 +1402,14 @@ app.post('/getProjectInvoiceCancel', (req, res, next) => {
 
 
 app.post('/getInvoiceByInvoiceId', (req, res, next) => {
-  db.query(`select i.invoice_id
-  ,i.invoice_code  
+  db.query(`select i.sales_return_id
+  ,i.sales_return_code  
   ,i.status
-  ,i.invoice_date
-  ,i.invoice_amount
+  ,i.sales_return_date
+  ,i.sales_return_amount
   ,i.gst_percentage
-   ,i.invoice_amount 
-   ,i.invoice_amount AS total_cost
+   ,i.sales_return_amount 
+   ,i.sales_return_amount AS total_cost
    ,i.gst_value
    ,i.discount
    ,i.payment_terms
@@ -1255,11 +1429,11 @@ app.post('/getInvoiceByInvoiceId', (req, res, next) => {
   ,o.cust_address_country
   ,o.cust_address_po_code
   ,p.title
-   from invoice i
+   from sales_return i
   LEFT JOIN orders o ON o.order_id=i.order_id
   LEFT JOIN company c ON (o.company_id = c.company_id) 
   LEFT JOIN sales order p ON (p.sales_order_id = i.sales_order_id) 
- WHERE i.invoice_id= ${db.escape(req.body.invoice_id)}`,
+ WHERE i.sales_return_id= ${db.escape(req.body.sales_return_id)}`,
     (err, result) => {
 
       if (err) {
@@ -1329,7 +1503,7 @@ app.post('/getReceiptByIds', (req, res, next) => {
   ,r.modified_by 
   FROM receipt r  
   LEFT JOIN invoice_receipt_history ih ON (ih.receipt_id = r.receipt_id) 
-   LEFT JOIN invoice i ON (i.invoice_id = ih.invoice_id) 
+   LEFT JOIN sales_return i ON (i.sales_return_id = ih.sales_return_id) 
  LEFT JOIN orders o ON (o.order_id = i.order_id) WHERE o.order_id = ${db.escape(req.body.order_id)}`,
     (err, result) => {
 
@@ -1353,7 +1527,7 @@ app.post('/getReceiptByIds', (req, res, next) => {
 app.post('/editInvoiceStatus', (req, res, next) => {
   db.query(`UPDATE invoice 
             SET status = 'Paid'
-             WHERE invoice_id =  ${db.escape(req.body.invoice_id)}`,
+             WHERE sales_return_id =  ${db.escape(req.body.sales_return_id)}`,
     (err, result) => {
       if (err) {
         console.log("error: ", err);
@@ -1371,7 +1545,7 @@ app.post('/editInvoiceStatus', (req, res, next) => {
 app.post('/editInvoicePartialStatus', (req, res, next) => {
   db.query(`UPDATE invoice 
             SET status = 'Partial Payment'
-             WHERE invoice_id =  ${db.escape(req.body.invoice_id)}`,
+             WHERE sales_return_id =  ${db.escape(req.body.sales_return_id)}`,
     (err, result) => {
       if (err) {
         console.log("error: ", err);
@@ -1399,10 +1573,10 @@ app.post('/getProjectReceiptByIdOld', (req, res, next) => {
   ,r.created_by
   ,r.modification_date
   ,r.modified_by 
-  ,ih.invoice_id
+  ,ih.sales_return_id
   FROM invoice_receipt_history ih  
   LEFT JOIN receipt r ON (ih.receipt_id = r.receipt_id) 
-   LEFT JOIN invoice i ON (i.invoice_id = ih.invoice_id) 
+   LEFT JOIN sales_return i ON (i.sales_return_id = ih.sales_return_id) 
  LEFT JOIN orders o ON (o.order_id = i.order_id) WHERE r.order_id = ${db.escape(req.body.order_id)}`,
     (err, result) => {
 
@@ -1465,9 +1639,9 @@ app.post('/getProjectReceiptById', (req, res, next) => {
     r.modified_by
 FROM receipt r
 LEFT JOIN invoice_receipt_history ih ON (ih.receipt_id = r.receipt_id)
-LEFT JOIN invoice i ON (i.invoice_id = ih.invoice_id)
+LEFT JOIN sales_return i ON (i.sales_return_id = ih.sales_return_id)
 LEFT JOIN orders o ON (o.order_id = i.order_id)
-WHERE r.order_id =  ${db.escape(req.body.order_id)} AND i.invoice_id IS NULL AND r.receipt_status <> 'cancelled';
+WHERE r.order_id =  ${db.escape(req.body.order_id)} AND i.sales_return_id IS NULL AND r.receipt_status <> 'cancelled';
 `,
     (err, result) => {
 
@@ -1500,8 +1674,8 @@ WHERE r.order_id =  ${db.escape(req.body.order_id)} AND i.invoice_id IS NULL AND
   ,r.remarks
   ,r.creation_date
   ,r.created_by
-  ,i.invoice_code
-  ,i.invoice_amount
+  ,i.sales_return_code
+  ,i.sales_return_amount
   ,r.modification_date
   ,r.modified_by 
     ,o.cust_address1
@@ -1511,7 +1685,7 @@ WHERE r.order_id =  ${db.escape(req.body.order_id)} AND i.invoice_id IS NULL AND
   , o.cust_company_name
   FROM receipt r  
   LEFT JOIN invoice_receipt_history ih ON (ih.receipt_id = r.receipt_id) 
-   LEFT JOIN invoice i ON (i.invoice_id = ih.invoice_id) 
+   LEFT JOIN sales_return i ON (i.sales_return_id = ih.sales_return_id) 
  LEFT JOIN orders o ON (o.order_id = i.order_id) WHERE r.receipt_id =${db.escape(req.body.receipt_id)}`,
     (err, result) => {
 
@@ -1649,8 +1823,8 @@ app.post('/getInvoiceItemByInvoiceId', (req, res, next) => {
    ,i.unit_price
    ,i.total_cost
    ,(i.qty*unit_price) AS amount
-   from invoice_item i
-  WHERE i.invoice_id= ${db.escape(req.body.invoice_id)}`,
+   from sales_return_item i
+  WHERE i.sales_return_id= ${db.escape(req.body.sales_return_id)}`,
     (err, result) => {
 
       if (err) {
@@ -1684,10 +1858,10 @@ app.post('/getReceiptById', (req, res, next) => {
   ,r.created_by
   ,r.modification_date
   ,r.modified_by 
-  ,i.invoice_id
+  ,i.sales_return_id
   FROM receipt r  
   LEFT JOIN invoice_receipt_history ih ON (ih.receipt_id = r.receipt_id) 
-   LEFT JOIN invoice i ON (i.invoice_id = ih.invoice_id) 
+   LEFT JOIN sales_return i ON (i.sales_return_id = ih.sales_return_id) 
  LEFT JOIN orders o ON (o.order_id = i.order_id) WHERE r.order_id =${db.escape(req.body.order_id)}`,
     (err, result) => {
 
@@ -1709,14 +1883,14 @@ app.post('/getReceiptById', (req, res, next) => {
 });
 
 app.post('/editInvoice', (req, res, next) => {
-  db.query(`UPDATE invoice 
+  db.query(`UPDATE sales_return 
             SET company_id=${db.escape(req.body.company_id)}
             ,currency_id=${db.escape(req.body.currency_id)}
               ,delivery_id=${db.escape(req.body.delivery_id)}
             ,sales_id=${db.escape(req.body.sales_id)}
             ,tran_no=${db.escape(req.body.tran_no)}
             ,tran_date=${db.escape(req.body.tran_date)}
-            WHERE invoice_id = ${db.escape(req.body.invoice_id)}`,
+            WHERE sales_return_id = ${db.escape(req.body.sales_return_id)}`,
             (err, result) => {
               if (err) {
                 console.log('error: ', err);
@@ -1736,15 +1910,15 @@ app.post('/editInvoice', (req, res, next) => {
   
 
 app.post('/getInvoiceReceiptById', (req, res, next) => {
-  db.query(`SELECT i.invoice_code 
+  db.query(`SELECT i.sales_return_code 
   ,i.status
-  ,i.invoice_id
-  ,i.invoice_amount
+  ,i.sales_return_id
+  ,i.sales_return_amount
   ,(SELECT SUM(invHist.amount) AS prev_sum 
   FROM invoice_receipt_history invHist 
   LEFT JOIN receipt r ON (r.receipt_id = invHist.receipt_id) 
-  WHERE invHist.invoice_id = i.invoice_id AND i.status != 'Cancelled' AND r.receipt_status !='cancelled') as prev_amount 
-  FROM invoice i
+  WHERE invHist.sales_return_id = i.sales_return_id AND i.status != 'Cancelled' AND r.receipt_status !='cancelled') as prev_amount 
+  FROM sales_return i
   LEFT JOIN orders o ON (o.order_id = i.order_id) 
   WHERE o.order_id = ${db.escape(req.body.order_id)} AND (i.status='due' OR i.status='Partial Payment')`,
     (err, result) => {
@@ -1771,7 +1945,7 @@ app.post('/getInvoiceReceiptById', (req, res, next) => {
 
 app.post('/getInvoiceItemById', (req, res, next) => {
   db.query(`SELECT item_title,
-invoice_id,
+sales_return_id,
 description,
 unit,
 qty,
@@ -1779,8 +1953,8 @@ unit_price,
 amount,
 total_cost,
 remarks
-FROM invoice_item
-WHERE invoice_id = ${db.escape(req.body.invoice_id)}`,
+FROM sales_return_item
+WHERE sales_return_id = ${db.escape(req.body.sales_return_id)}`,
           (err, result) => {
        
       if (result.length == 0) {
@@ -1800,11 +1974,11 @@ WHERE invoice_id = ${db.escape(req.body.invoice_id)}`,
 
 
 app.post('/getInvoiceLineItemsById', (req, res, next) => {
-  db.query(`select i.invoice_id
-  ,i.invoice_code  
+  db.query(`select i.sales_return_id
+  ,i.sales_return_code  
   ,i.status
-  ,i.invoice_date
-   ,i.invoice_amount
+  ,i.sales_return_date
+   ,i.sales_return_amount
    ,i.gst_value
    ,i.discount
    ,i.payment_terms
@@ -1827,13 +2001,12 @@ app.post('/getInvoiceLineItemsById', (req, res, next) => {
   ,it.item_title
   ,it.description
   ,it.amount
-  ,it.foc
-   from invoice i
-    LEFT JOIN invoice_item it ON (it.invoice_id = i.invoice_id) 
+   from sales_return i
+    LEFT JOIN sales_return_item it ON (it.sales_return_id = i.sales_return_id) 
   LEFT JOIN orders o ON o.order_id=i.order_id
   LEFT JOIN company c ON (o.company_id = c.company_id) 
   LEFT JOIN sales order p ON (p.sales_order_id = i.sales_order_id) 
- WHERE i.invoice_id= ${db.escape(req.body.invoice_id)}`,
+ WHERE i.sales_return_id= ${db.escape(req.body.sales_return_id)}`,
           (err, result) => {
        
       if (result.length == 0) {
@@ -1859,7 +2032,7 @@ app.post('/insertQuoteItems', (req, res, next) => {
 
   let data = {
     product_id: req.body.product_id,
-    invoice_id: req.body.invoice_id,
+    sales_return_id: req.body.sales_return_id,
     quantity: sanitize(req.body.quantity),
     loose_qty: sanitize(req.body.loose_qty),
     carton_qty: sanitize(req.body.carton_qty),
@@ -1871,41 +2044,7 @@ app.post('/insertQuoteItems', (req, res, next) => {
      foc: sanitize(req.body.foc),
   };
 
-  let sql = "INSERT INTO invoice_item SET ?";
-  db.query(sql, data, (err, result) => {
-    if (err) {
-      console.log("error: ", err);
-      return res.status(500).send({ error: "Database insert failed." });
-    } else {
-      return res.status(200).send({
-        data: result,
-        msg: 'New Tender has been created successfully'
-      });
-    }
-  });
-});
-
-app.post('/insertCreditItems', (req, res, next) => {
-  // Helper function to return 0 if the value is empty or not a number
-  const sanitize = (value) => {
-    return value === undefined || value === null || value === '' ? 0 : value;
-  };
-
-  let data = {
-    product_id: req.body.product_id,
-    credit_note_id: req.body.credit_note_id,
-    quantity: sanitize(req.body.quantity),
-    loose_qty: sanitize(req.body.loose_qty),
-    carton_qty: sanitize(req.body.carton_qty),
-    carton_price: sanitize(req.body.carton_price),
-    discount_value: sanitize(req.body.discount_value),
-    wholesale_price: sanitize(req.body.wholesale_price),
-    gross_total: sanitize(req.body.gross_total),
-    total: sanitize(req.body.total),
-     foc: sanitize(req.body.foc),
-  };
-
-  let sql = "INSERT INTO credit_note_item SET ?";
+  let sql = "INSERT INTO sales_return_item SET ?";
   db.query(sql, data, (err, result) => {
     if (err) {
       console.log("error: ", err);
@@ -1937,9 +2076,6 @@ app.post('/insertDeliveryItems', (req, res, next) => {
     wholesale_price: sanitize(req.body.wholesale_price),
     gross_total: sanitize(req.body.gross_total),
     total: sanitize(req.body.total),
-     foc: sanitize(req.body.foc),
-    
-    
   };
 
   let sql = "INSERT INTO delivery_order_item SET ?";
@@ -1961,7 +2097,7 @@ app.post('/insertDeliveryItems', (req, res, next) => {
   app.post('/insertQuoteItemsOld', (req, res, next) => {
     let data = {
       product_id: req.body.product_id,
-      invoice_id: req.body.invoice_id,
+      sales_return_id: req.body.sales_return_id,
       quantity: req.body.quantity,
       loose_qty: req.body.loose_qty,
       carton_qty: req.body.carton_qty,
@@ -1970,11 +2106,10 @@ app.post('/insertDeliveryItems', (req, res, next) => {
       wholesale_price: req.body.wholesale_price,
       gross_total: req.body.gross_total,
       total: req.body.total,
-      foc: req.body.foc,
   
     };
   
-    let sql = "INSERT INTO invoice_item SET ?";
+    let sql = "INSERT INTO sales_return_item SET ?";
     let query = db.query(sql, data,(err, result) => {
       if (err) {
         console.log("error: ", err);
@@ -1989,45 +2124,34 @@ app.post('/insertDeliveryItems', (req, res, next) => {
     });
   });
   
-  
-  app.post('/updateBillDiscount', (req, res) => {
-  const { invoice_id, bill_discount } = req.body;
+  app.post('/deleteInvoice', (req, res, next) => {
+  let ids = req.body.sales_return_id.split(","); // ["33","32"]
 
-  if (!invoice_id || isNaN(bill_discount)) {
-    return res.status(400).json({ message: 'Invalid data' });
-  }
-
-  const sql = `
-    UPDATE invoice
-    SET bill_discount = ?
-    WHERE invoice_id = ?
-  `;
-
-  db.query(sql, [bill_discount, invoice_id], (err, result) => {
+  let sql = "DELETE FROM sales_return WHERE sales_return_id IN (?)";
+  db.query(sql, [ids], (err, result) => {
     if (err) {
-      console.error('Error updating bill discount:', err);
-      return res.status(500).json({ message: 'Internal server error' });
+      console.log('error: ', err);
+      return res.status(400).send({ data: err, msg: 'failed' });
+    } else {
+      return res.status(200).send({ data: result, msg: 'Success' });
     }
-
-    res.status(200).json({ message: 'Bill discount updated successfully' });
   });
 });
 
+  app.post('/updateBillDiscount', (req, res) => {
+  const { sales_return_id, bill_discount } = req.body;
 
-  app.post('/updateBillDiscountCN', (req, res) => {
-  const { credit_note_id, bill_discount } = req.body;
-
-  if (!credit_note_id || isNaN(bill_discount)) {
+  if (!sales_return_id || isNaN(bill_discount)) {
     return res.status(400).json({ message: 'Invalid data' });
   }
 
   const sql = `
-    UPDATE credit_note
+    UPDATE sales_return
     SET bill_discount = ?
-    WHERE credit_note_id = ?
+    WHERE sales_return_id = ?
   `;
 
-  db.query(sql, [bill_discount, credit_note_id], (err, result) => {
+  db.query(sql, [bill_discount, sales_return_id], (err, result) => {
     if (err) {
       console.error('Error updating bill discount:', err);
       return res.status(500).json({ message: 'Internal server error' });
@@ -2062,43 +2186,19 @@ app.post('/insertDeliveryItems', (req, res, next) => {
 
 
 app.post('/updateSalesOrderSummary', (req, res) => {
-  const { invoice_id, sub_total, tax, net_total } = req.body;
+  const { sales_return_id, sub_total, tax, net_total } = req.body;
 
-  if (!invoice_id || isNaN(sub_total)) {
+  if (!sales_return_id || isNaN(sub_total)) {
     return res.status(400).json({ message: 'Invalid data' });
   }
 
   const sql = `
-    UPDATE invoice
-    SET sub_total = ?, tax = ?, invoice_amount = ?, balance_amount = ?
-    WHERE invoice_id = ?
+    UPDATE sales_return
+    SET sub_total = ?, tax = ?, sales_return_amount = ?, balance_amount = ?
+    WHERE sales_return_id = ?
   `;
 
-  db.query(sql, [sub_total, tax, net_total, net_total, invoice_id], (err, result) => {
-    if (err) {
-      console.error('Error updating invoice summary:', err);
-      return res.status(500).json({ message: 'Internal server error' });
-    }
-
-    res.status(200).json({ message: 'Total updated successfully' });
-  });
-});
-
-
-app.post('/updateSalesOrderSummaryCN', (req, res) => {
-  const { credit_note_id, sub_total, tax, net_total } = req.body;
-
-  if (!credit_note_id || isNaN(sub_total)) {
-    return res.status(400).json({ message: 'Invalid data' });
-  }
-
-  const sql = `
-    UPDATE credit_note
-    SET sub_total = ?, tax = ?, credit_note_amount = ?, balance_amount = ?
-    WHERE credit_note_id = ?
-  `;
-
-  db.query(sql, [sub_total, tax, net_total, net_total, credit_note_id], (err, result) => {
+  db.query(sql, [sub_total, tax, net_total, net_total, sales_return_id], (err, result) => {
     if (err) {
       console.error('Error updating invoice summary:', err);
       return res.status(500).json({ message: 'Internal server error' });
@@ -2163,10 +2263,10 @@ app.post('/updateDeliveryOrderSummary', (req, res) => {
 app.post('/insertInvoice', (req, res, next) => {
 
   let data = {
-    invoice_code: req.body.invoice_code
-    ,  invoice_id: req.body.invoice_id
-    , invoice_amount: req.body.invoice_amount
-    , invoice_date: req.body.invoice_date
+    sales_return_code: req.body.sales_return_code
+    ,  sales_return_id: req.body.sales_return_id
+    , sales_return_amount: req.body.sales_return_amount
+    , sales_return_date: req.body.sales_return_date
 
     , status: 'Not Paid'
     , flag: req.body.flag
@@ -2184,7 +2284,7 @@ app.post('/insertInvoice', (req, res, next) => {
     , currency_id	: req.body.currency_id
   
  };
-  let sql = "INSERT INTO invoice SET ?";
+  let sql = "INSERT INTO sales_return SET ?";
   let query = db.query(sql, data,(err, result) => {
     if (err) {
       return res.status(400).send({
@@ -2201,39 +2301,9 @@ app.post('/insertInvoice', (req, res, next) => {
   });
 });
 
-app.post('/deleteInvoice', (req, res, next) => {
-  let ids = req.body.invoice_id.split(","); // ["33","32"]
-
-  let sql = "DELETE FROM invoice WHERE invoice_id IN (?)";
-  db.query(sql, [ids], (err, result) => {
-    if (err) {
-      console.log('error: ', err);
-      return res.status(400).send({ data: err, msg: 'failed' });
-    } else {
-      return res.status(200).send({ data: result, msg: 'Success' });
-    }
-  });
-});
-
-
-app.post('/deleteCreditNote', (req, res, next) => {
-  let ids = req.body.credit_note_id.split(","); // ["33","32"]
-
-  let sql = "DELETE FROM credit_note WHERE credit_note_id IN (?)";
-  db.query(sql, [ids], (err, result) => {
-    if (err) {
-      console.log('error: ', err);
-      return res.status(400).send({ data: err, msg: 'failed' });
-    } else {
-      return res.status(200).send({ data: result, msg: 'Success' });
-    }
-  });
-});
-
-
 app.delete('/deleteInvoice', (req, res, next) => {
 
-  let data = {invoice_code: req.body.invoice_code};
+  let data = {sales_return_code: req.body.sales_return_code};
   let sql = "DELETE FROM invoice WHERE ?";
   let query = db.query(sql, data,(err, result) => {
     if (err) {
@@ -2297,7 +2367,7 @@ app.post('/insertInvoiceItem', (req, res, next) => {
 
   let data = {
     qty: req.body.qty
-    ,invoice_id: req.body.invoice_id
+    ,sales_return_id: req.body.sales_return_id
      , unit_price: req.body.unit_price
  , item_title: req.body.item_title
  , model: req.body.model
@@ -2320,7 +2390,7 @@ app.post('/insertInvoiceItem', (req, res, next) => {
  , year: req.body.year
  , total_cost: req.body.total_cost
  };
-  let sql = "INSERT INTO invoice_item SET ?";
+  let sql = "INSERT INTO sales_return_item SET ?";
   let query = db.query(sql, data,(err, result) => {
     if (err) {
       return res.status(400).send({
@@ -2428,10 +2498,10 @@ app.post('/getInvoicePdf', (req, res, next) => {
                 ,o.cust_fax
                 ,gc.name AS cust_address_country
                 ,c.company_id
-                ,i.invoice_date
+                ,i.sales_return_date
                 ,ini.unit_price
-                ,i.invoice_code
-                ,i.invoice_type
+                ,i.sales_return_code
+                ,i.sales_return_type
                 ,i.qty_text
                 ,i.rate_text
                 ,i.invoice_terms
@@ -2446,14 +2516,14 @@ app.post('/getInvoicePdf', (req, res, next) => {
                 ,i.po_number
                 ,co.first_name
                 ,co.salutation
-        FROM invoice_item ini
-        LEFT JOIN invoice i  ON (i.invoice_id  = ini.invoice_id)
+        FROM sales_return_item ini
+        LEFT JOIN sales_return i  ON (i.sales_return_id  = ini.sales_return_id)
         LEFT JOIN orders o  ON (o.order_id	= i.order_id)
         LEFT JOIN company c  ON (c.company_id  = o.company_id)
         LEFT JOIN contact co ON (co.contact_id = o.contact_id)
         LEFT JOIN geo_country gc ON (o.cust_address_country = gc.country_code)
-        WHERE i.invoice_id = ${db.escape(req.body.invoice_id)}
-        ORDER BY ini.invoice_item_id`,
+        WHERE i.sales_return_id = ${db.escape(req.body.sales_return_id)}
+        ORDER BY ini.sales_return_item_id`,
     (err, result) => {
 
       if (err) {
@@ -2474,17 +2544,17 @@ app.post('/getInvoicePdf', (req, res, next) => {
 });
 
 app.get('/getInvoiveByMonth', (req, res, next) => {
-  db.query(`SELECT DATE_FORMAT(i.invoice_date, '%b %Y') AS invoice_month
-  ,(SUM(i.invoice_amount + 
-        ((i.invoice_amount * i.gst_percentage) / 100)
+  db.query(`SELECT DATE_FORMAT(i.sales_return_date, '%b %Y') AS invoice_month
+  ,(SUM(i.sales_return_amount + 
+        ((i.sales_return_amount * i.gst_percentage) / 100)
                     )
                 ) AS invoice_amount_monthly
-        FROM invoice i
+        FROM sales_return i
         LEFT JOIN orders o   ON (o.order_id   = i.order_id)
          WHERE o.record_type = 'Project'
  AND i.status != 'Cancelled'
- AND i.invoice_date BETWEEN '2021-03-1' AND '2023-03-31'
- GROUP BY DATE_FORMAT(i.invoice_date, '%Y-%m')
+ AND i.sales_return_date BETWEEN '2021-03-1' AND '2023-03-31'
+ GROUP BY DATE_FORMAT(i.sales_return_date, '%Y-%m')
  `,
   (err, result) => {
     if (err) {
@@ -2506,9 +2576,9 @@ app.get('/getInvoiveByMonth', (req, res, next) => {
 
 app.get('/getInvoiveBestMonthSummary', (req, res, next) => {
   db.query(`SELECT DATE_FORMAT(i.creation_date, '%Y-%m') AS monthYear
-                  ,COUNT(i.invoice_id) AS total
-                  ,SUM(i.invoice_amount) AS totalAmount 
-            FROM invoice i
+                  ,COUNT(i.sales_return_id) AS total
+                  ,SUM(i.sales_return_amount) AS totalAmount 
+            FROM sales_return i
             WHERE DATE_FORMAT(i.creation_date, '%Y-%m-%d') > Date_add(Now(), interval - 12 month)
               AND DATE_FORMAT(i.creation_date, '%Y-%m-%d') < Date_add(Now(), interval - 1 month)
             GROUP BY DATE_FORMAT(i.creation_date, '%m-%Y')

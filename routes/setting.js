@@ -93,6 +93,30 @@ app.get("/getMailId", (req, res, next) => {
   );
 });
 
+
+app.get('/getholiday', (req, res, next) => {
+  db.query(`Select 
+     s.value as holidayList
+     ,s.code
+     From valuelist s
+     Where s.key_text ='Holiday List'`,
+  (err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+})
+}
+  }
+);
+});
+
 app.get("/getEnquiryMailId", (req, res, next) => {
   db.query(
     `Select s.key_text

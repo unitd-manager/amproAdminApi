@@ -128,6 +128,37 @@ app.post('/getAttachmentByRecordId', (req, res, next) => {
 );
 });
 
+
+app.post('/getProductImage', (req, res, next) => {
+  db.query(`SELECT m.file_name
+  ,m.actual_file_name
+  ,p.product_id
+  ,p.title
+  FROM media m
+   LEFT JOIN product p ON (p.product_id = m.record_id)
+   where p.product_id= ${db.escape(req.body.record_id)}`,
+  (err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      result(err, null);
+      return;
+    } 
+    if (result.length === 0) {
+      return res.status(400).send({
+        msg: 'No result found'
+      });
+    } else {
+          return res.status(200).send({
+            data: result,
+            msg:'Success'
+          });
+
+      }
+
+  }
+);
+});
+
 app.get('/secret-route', userMiddleware.isLoggedIn, (req, res, next) => {
   console.log(req.userData);
   res.send('This is the secret content. Only logged in users can see that!');

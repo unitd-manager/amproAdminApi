@@ -43,6 +43,58 @@ app.get('/getSection', (req, res, next) => {
 });
 
 app.get('/getSectionForSidemenu', (req, res, next) => {
+  db.query(
+    `SELECT 
+        s.section_id,
+        s.section_title,
+        s.sort_order AS section_sort,
+        c.category_title,
+        c.sort_order AS category_sort,
+        sc.sub_category_title,
+        sc.internal_link,
+        sc.sort_order AS sub_category_sort
+     FROM section s
+     LEFT JOIN category c ON s.category_id = c.category_id
+     LEFT JOIN sub_category sc ON s.sub_category_id = sc.sub_category_id
+     WHERE s.published = 1 
+       AND s.side_bar = 1
+       AND (s.button_position="Admin" OR s.button_position="Reports")
+     ORDER BY s.sort_order ASC, c.sort_order ASC, sc.sort_order ASC`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({ data: err, msg: 'failed' });
+      } else {
+        // 🔹 Build Nested Structure: Section → Category → SubCategory
+        const grouped = {};
+
+        result.forEach((row) => {
+          if (!grouped[row.section_title]) {
+            grouped[row.section_title] = {};
+          }
+
+          if (!grouped[row.section_title][row.category_title]) {
+            grouped[row.section_title][row.category_title] = [];
+          }
+
+          grouped[row.section_title][row.category_title].push({
+            sub_category_title: row.sub_category_title,
+            internal_link: row.internal_link,
+            id: row.section_id,
+          });
+        });
+
+        return res.status(200).send({
+          data: grouped,
+          msg: 'Success',
+        });
+      }
+    }
+  );
+});
+
+
+app.get('/getSectionForSidemenuOld', (req, res, next) => {
   db.query(`Select *
   From section Where published = 1 AND  (button_position="Admin" OR button_position="Reports")
    ORDER BY sort_order ASC`,

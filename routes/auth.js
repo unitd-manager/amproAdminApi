@@ -45,6 +45,64 @@ app.post('/login', (req, res, next) => {
   );
 });
 
+
+app.get('/geofence', async (req, res) => {
+  try {
+    db.query(
+      `
+      SELECT key_text, value
+      FROM setting
+      WHERE key_text IN ('cp.latitude', 'cp.longitude', 'cp.radius')
+      `,
+      (err, rows) => {
+        if (err) {
+          console.error("Error fetching geofence:", err);
+          return res.status(500).json({ success: false, message: "Error fetching geofence" });
+        }
+
+        // Convert DB rows into key-value map
+        const geofence = {};
+        rows.forEach(row => {
+          if (row.key_text === "cp.latitude") geofence.latitude = parseFloat(row.value);
+          if (row.key_text === "cp.longitude") geofence.longitude = parseFloat(row.value);
+          if (row.key_text === "cp.radius") geofence.radius = parseFloat(row.value);
+        });
+
+        // 👇 Print data in console
+        console.log("Geofence Data:", geofence);
+
+        res.json({ success: true, data: geofence });
+      }
+    );
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    res.status(500).json({ success: false, message: "Unexpected error fetching geofence" });
+  }
+});
+
+
+app.get('/getSettingsForGoogleMap', (req, res, next) => {
+  db.query(`SELECT * FROM setting WHERE key_text="cp.latitude"`,
+  (err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+})
+}
+  }
+);
+});
+
+
+
+
 // // Define a route for registration
 // app.post('/register', (req, res,next) => {
 //   const { first_name,last_name, email, password } = req.body;
@@ -135,27 +193,112 @@ app.get("/getContactImage", (req, res, next) => {
   });
 
 app.post('/backlogin', (req, res, next) => {
-  db.query(`SELECT * FROM staff WHERE email=${db.escape(req.body.email)} AND pass_word=${db.escape(req.body.password)}`,
+  // First, check if the email exists
+  db.query(
+    `SELECT * FROM staff WHERE email=${db.escape(req.body.email)}`,
     (err, result) => {
-       
+      if (err) {
+        return res.status(500).send({ msg: 'Database error', error: err });
+      }
       if (result.length === 0) {
-          
+        // Email not registered
         return res.status(200).send({
           msg: 'No User found',
-          status:'200'
+          status: '200'
         });
       } else {
-          var token = jwt.sign({ id: result[0].contact_id }, 'unitdecom', {
-              expiresIn: 86400 // expires in 24 hours
-            });
-            return res.status(200).send({
-              data: result[0],
-              msg:'Success',
-              token:token
-            });
-
+        // Email exists, now check password
+        if (result[0].pass_word === req.body.password) {
+          var token = jwt.sign({ id: result[0].staff_id }, 'unitdecom', {
+            expiresIn: 86400 // expires in 24 hours
+          });
+          return res.status(200).send({
+            data: result[0],
+            msg: 'Success',
+            token: token
+          });
+        } else {
+          // Password is wrong
+          return res.status(200).send({
+            msg: 'Invalid password',
+            status: '200'
+          });
         }
- 
+      }
+    }
+  );
+});
+
+app.post('/getUserById', (req, res, next) => {
+  // First, check if the email exists
+  db.query(
+    `SELECT * FROM staff WHERE staff_id=${db.escape(req.body.id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(500).send({ msg: 'Database error', error: err });
+      }
+      if (result.length === 0) {
+        // Email not registered
+        return res.status(200).send({
+          msg: 'No User found',
+          status: '200'
+        });
+      } else {
+        // Email exists, now check password
+        if (result[0].pass_word === req.body.password) {
+          var token = jwt.sign({ id: result[0].staff_id }, 'unitdecom', {
+            expiresIn: 86400 // expires in 24 hours
+          });
+          return res.status(200).send({
+            data: result[0],
+            msg: 'Success',
+            token: token
+          });
+        } else {
+          // Password is wrong
+          return res.status(200).send({
+            msg: 'Invalid password',
+            status: '200'
+          });
+        }
+      }
+    }
+  );
+});
+
+app.post('/getUserByStaffId', (req, res, next) => {
+  // First, check if the email exists
+  db.query(
+    `SELECT * FROM staff WHERE staff_id=${db.escape(req.body.staff_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(500).send({ msg: 'Database error', error: err });
+      }
+      if (result.length === 0) {
+        // Email not registered
+        return res.status(200).send({
+          msg: 'No User found',
+          status: '200'
+        });
+      } else {
+        // Email exists, now check password
+        if (result[0].pass_word === req.body.password) {
+          var token = jwt.sign({ id: result[0].staff_id }, 'unitdecom', {
+            expiresIn: 86400 // expires in 24 hours
+          });
+          return res.status(200).send({
+            data: result[0],
+            msg: 'Success',
+            token: token
+          });
+        } else {
+          // Password is wrong
+          return res.status(200).send({
+            msg: 'Invalid password',
+            status: '200'
+          });
+        }
+      }
     }
   );
 });

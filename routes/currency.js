@@ -96,6 +96,84 @@ app.post('/getCuerrencyByPurchaseorderId', (req, res, next) => {
 });
 
 
+app.post('/getCuerrencyByGoodsReturnId', (req, res, next) => {
+  db.query(` Select 
+  s.currency_code,
+  s.currency_rate,
+  s.currency_name,
+  s.currency_id,
+  s.goods_return_id
+  From currency s
+  Where s.goods_return_id=${db.escape(req.body.goods_return_id)}`,
+  (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+});
+}
+  }
+);
+});
+
+app.post('/getCuerrencyByPurchaseInvoiceId', (req, res, next) => {
+  db.query(` Select 
+  s.currency_code,
+  s.currency_rate,
+  s.currency_name,
+  s.currency_id,
+  s.purchase_invoice_id
+  From currency s
+  Where s.purchase_invoice_id=${db.escape(req.body.purchase_invoice_id)}`,
+  (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+});
+}
+  }
+);
+});
+
+app.post('/getCuerrencyByPurchaseDebitNoteId', (req, res, next) => {
+  db.query(` Select 
+  s.currency_code,
+  s.currency_rate,
+  s.currency_name,
+  s.currency_id,
+  s.purchase_debit_note_id
+  From currency s
+  Where s.purchase_debit_note_id=${db.escape(req.body.purchase_debit_note_id)}`,
+  (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+});
+}
+  }
+);
+});
+
 app.post('/editCurrency', (req, res, next) => {
   db.query(`UPDATE currency 
             SET currency_name=${db.escape(req.body.currency_name)}
@@ -121,6 +199,36 @@ app.post('/editCurrency', (req, res, next) => {
         });
   
 app.post('/insertCurrency', (req, res, next) => {
+
+  let data = {	
+     creation_date: new Date().toISOString()
+    , modification_date: null
+    , currency_rate: req.body.currency_rate
+    , currency_name	: req.body.currency_name
+     , currency_code	: req.body.currency_code
+      , purchase_order_id	: req.body.purchase_order_id
+    , created_by: req.body.created_by
+
+ };
+  let sql = "INSERT INTO currency SET ?";
+  let query = db.query(sql, data, (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+})
+}
+  }
+);
+});
+
+app.post('/insertPurchaseOrderCurrency', (req, res, next) => {
 
   let data = {	
      creation_date: new Date().toISOString()
@@ -203,6 +311,83 @@ app.post('/editGoodsCurrency', (req, res, next) => {
           );
         });
   
+  
+app.post('/editGoodsReturnCurrency', (req, res, next) => {
+  db.query(`UPDATE currency 
+            SET currency_name=${db.escape(req.body.currency_name)}
+            ,currency_rate=${db.escape(req.body.currency_rate)}
+             ,currency_code=${db.escape(req.body.currency_code)}
+             ,goods_return_id = ${db.escape(req.body.goods_return_id)}
+            WHERE currency_id = ${db.escape(req.body.currency_id)}`,
+            (err, result) => {
+              if (err) {
+                console.log('error: ', err);
+                return res.status(400).send({
+                  data: err,
+                  msg: 'failed',
+                });
+              } else {
+                return res.status(200).send({
+                  data: result,
+                  msg: 'Success',
+          });
+        }
+            }
+          );
+        });
+  
+  
+  
+app.post('/editPurchaseInvoiceCurrency', (req, res, next) => {
+  db.query(`UPDATE currency 
+            SET currency_name=${db.escape(req.body.currency_name)}
+            ,currency_rate=${db.escape(req.body.currency_rate)}
+             ,currency_code=${db.escape(req.body.currency_code)}
+             ,purchase_invoice_id = ${db.escape(req.body.purchase_invoice_id)}
+            WHERE currency_id = ${db.escape(req.body.currency_id)}`,
+            (err, result) => {
+              if (err) {
+                console.log('error: ', err);
+                return res.status(400).send({
+                  data: err,
+                  msg: 'failed',
+                });
+              } else {
+                return res.status(200).send({
+                  data: result,
+                  msg: 'Success',
+          });
+        }
+            }
+          );
+        });
+  
+  
+app.post('/editPurchaseDebitNoteCurrency', (req, res, next) => {
+  db.query(`UPDATE currency 
+            SET currency_name=${db.escape(req.body.currency_name)}
+            ,currency_rate=${db.escape(req.body.currency_rate)}
+             ,currency_code=${db.escape(req.body.currency_code)}
+             ,purchase_debit_note_id = ${db.escape(req.body.purchase_debit_note_id)}
+            WHERE currency_id = ${db.escape(req.body.currency_id)}`,
+            (err, result) => {
+              if (err) {
+                console.log('error: ', err);
+                return res.status(400).send({
+                  data: err,
+                  msg: 'failed',
+                });
+              } else {
+                return res.status(200).send({
+                  data: result,
+                  msg: 'Success',
+          });
+        }
+            }
+          );
+        });
+  
+  
 app.post('/insertGoodsCurrency', (req, res, next) => {
 
   let data = {	
@@ -232,6 +417,100 @@ app.post('/insertGoodsCurrency', (req, res, next) => {
   }
 );
 });
+
+app.post('/insertGoodsReturnCurrency', (req, res, next) => {
+
+  let data = {	
+     creation_date: new Date().toISOString()
+    , modification_date: null
+    , currency_rate: req.body.currency_rate
+    , currency_name	: req.body.currency_name
+     , currency_code	: req.body.currency_code
+      , goods_return_id	: req.body.goods_return_id
+    , created_by: req.body.created_by
+
+ };
+  let sql = "INSERT INTO currency SET ?";
+  let query = db.query(sql, data, (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+})
+}
+  }
+);
+});
+
+  
+app.post('/insertPurchaseInvoiceCurrency', (req, res, next) => {
+
+  let data = {	
+     creation_date: new Date().toISOString()
+    , modification_date: null
+    , currency_rate: req.body.currency_rate
+    , currency_name	: req.body.currency_name
+     , currency_code	: req.body.currency_code
+      , purchase_invoice_id	: req.body.purchase_invoice_id
+    , created_by: req.body.created_by
+
+ };
+  let sql = "INSERT INTO currency SET ?";
+  let query = db.query(sql, data, (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+})
+}
+  }
+);
+});
+
+app.post('/insertPurchaseDebitNoteCurrency', (req, res, next) => {
+
+  let data = {	
+     creation_date: new Date().toISOString()
+    , modification_date: null
+    , currency_rate: req.body.currency_rate
+    , currency_name	: req.body.currency_name
+     , currency_code	: req.body.currency_code
+      , purchase_debit_note_id	: req.body.purchase_debit_note_id
+    , created_by: req.body.created_by
+
+ };
+  let sql = "INSERT INTO currency SET ?";
+  let query = db.query(sql, data, (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+})
+}
+  }
+);
+});
+
+
+
 
 
 app.post('/deleteCurrency', (req, res, next) => {

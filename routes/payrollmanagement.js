@@ -187,6 +187,96 @@ app.post('/getpayrollmanagementById', (req, res, next) => {
   );
 });
 
+
+app.post('/getpayrollbyMonthYear', (req, res, next) => {
+  db.query(`SELECT pm.payroll_month
+  ,pm.payslip_start_date
+  ,pm.payslip_end_date
+  ,pm.generated_date
+  ,pm.employee_id
+  ,pm.ot_hours
+  ,j.overtime_pay_rate As overtime
+  ,j.working_days
+  ,pm.payroll_year
+  ,pm.total_basic_pay_for_month
+  ,pm.total_deductions
+  ,pm.basic_pay
+  ,pm.ot_amount
+  ,pm.cpf_employer
+  ,pm.cpf_employee
+  ,pm.payroll_management_id
+  ,pm.mode_of_payment
+  ,pm.pay_sinda
+  ,pm.loan_amount
+  ,pm.mode_of_payment
+  ,pm.working_days_in_month
+  ,pm.actual_working_days
+  ,pm.notes
+  ,pm.basic_pay
+  ,pm.pay_cdac
+  ,pm.pay_mbmf
+  ,pm.pay_eucf
+  ,pm.department
+  ,pm.flag
+  ,pm.status
+  ,pm.cpf_account_no
+  ,pm.govt_donation
+  ,pm.overtime_pay_rate
+  ,pm.allowance1
+  ,pm.allowance2
+  ,pm.allowance3
+  ,pm.allowance4
+  ,pm.allowance5
+  ,pm.allowance6
+  ,(pm.allowance1 + pm.allowance2 + pm.allowance3 + pm.allowance4 + pm.allowance5 + pm.reimbursement + pm.basic_pay + pm.director_fee) AS total_allowance
+  ,(pm.loan_amount + pm.income_tax_amount + pm.sdl + pm.deduction1 + pm.deduction2 + pm.deduction3 + pm.deduction4 + pm.pay_cdac) AS total_deduction
+  ,((pm.allowance1 + pm.allowance2 + pm.allowance3 + pm.allowance4 + pm.allowance5 + pm.reimbursement + pm.basic_pay + pm.director_fee) 
+    - (pm.loan_amount + pm.income_tax_amount + pm.sdl + pm.deduction1 + pm.deduction2 + pm.deduction3 + pm.deduction4 + pm.pay_cdac)) 
+    AS net_total
+  ,pm.deduction1
+  ,pm.deduction2
+  ,pm.deduction3
+  ,pm.deduction4
+  ,pm.income_tax_amount
+  ,pm.sdl
+  ,pm.reimbursement
+  ,pm.director_fee
+  ,pm.generated_date
+  ,pm.payroll_management_id 
+
+  ,e.position AS designation
+  ,e.first_name
+  ,e.employee_name
+  ,e.salary
+  ,e.date_of_birth AS dob
+  ,e.spr_year
+  ,e.citizen
+  ,e.nric_no
+  ,e.status AS employee_status
+ 
+  FROM payroll_management pm
+  LEFT JOIN (employee e) ON (e.employee_id = pm.employee_id)
+  LEFT JOIN (job_information j) ON (e.employee_id = j.employee_id)
+  WHERE pm.payroll_year = ${db.escape(req.body.payroll_year)}
+  AND pm.payroll_month = ${db.escape(req.body.payroll_month)}
+  AND pm.employee_id = ${db.escape(req.body.employee_id)}`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        });
+      }
+    }
+  );
+});
+
 app.post('/getpayrollmanagementFilterYearMonth', (req, res, next) => {
   db.query(`SELECT pm.payroll_month
   ,pm.payslip_start_date
@@ -898,7 +988,7 @@ app.get('/getJobInformationPayroll', (req, res, next) => {
   ,j.deduction4
   ,j.income_tax_amount
   FROM job_information j
-WHERE j.status ='Current' AND j.employee_id NOT IN (
+WHERE  j.employee_id NOT IN (
     SELECT pm.employee_id
     FROM payroll_management pm
  

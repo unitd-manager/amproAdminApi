@@ -8,16 +8,57 @@ var md5 = require('md5')
 const fileUpload = require('express-fileupload')
 const _ = require('lodash')
 const mime = require('mime-types')
+const axios = require('axios');
+
 var bodyParser = require('body-parser')
 var cors = require('cors')
 var app = express()
 app.use(cors())
+
+app.use(express.json());
 
 app.use(
   fileUpload({
     createParentPath: true,
   })
 );
+
+
+
+app.post('/send-email', async (req, res) => {
+  const { first_name: name, email } = req.body;
+  const n8nWebhookUrl = process.env.N8N_ENQUIRY_WEBHOOK_URL;
+
+  if (!n8nWebhookUrl) {
+    console.error('N8N_ENQUIRY_WEBHOOK_URL is not set.');
+    return res.status(500).json({ message: 'Email notification service is not configured.' });
+  }
+
+  try {
+    const payload = {
+      subject: `New Enquiry from ${name}`,
+      body: `You have received a new enquiry.\n\nName: ${name}\nEmail: ${email}`,
+      recipient: 'jasmine@unitdtechnologies.com'
+    };
+
+    // ✅ This correctly sends the payload to the n8n webhook
+    await axios.post(n8nWebhookUrl, payload); 
+
+    res.status(200).json({ message: 'Notification sent successfully.' });
+    
+  } catch (error) {
+    if (error.response) {
+      console.error('n8n webhook error - Response Data:', error.response.data);
+      console.error('n8n webhook error - Response Status:', error.response.status);
+    } else if (error.request) {
+      console.error('n8n webhook error - No response:', error.request);
+    } else {
+      console.error('n8n webhook error - General Error:', error.message);
+    }
+    res.status(500).json({ message: 'Failed to send notification.' });
+  }
+});
+
 app.get('/getEnquiry', (req, res, next) => {
     db.query(`SELECT e.first_name,
     e.last_name,
@@ -180,5 +221,36 @@ app.get('/getEnquiry', (req, res, next) => {
     }
   })
 })
+
+app.get('/getSalesReport', (req, res, next) => {
+    db.query(`SELECT e.first_name,
+    e.last_name,
+    e.email,
+    e.phone,
+    e.comments,
+    e.product,
+    e.service,
+    e.status,
+    e.enquiry_id,
+    e.published,
+    e.order_code
+    FROM enquiry e
+    where e.order_code !='';`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+  })
+  }
+    }
+  );
+  });
 
 module.exports = app

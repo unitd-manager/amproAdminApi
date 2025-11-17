@@ -161,7 +161,18 @@ app.get('/getValueListDropdown', (req, res, next) => {
       { id: '66', name: 'Product Color'},
       { id: '67', name: 'Product Size'},
        { id: '68', name: 'UoM'},
-          { id: '69', name: 'Tax Type'}
+          { id: '69', name: 'Tax Type'},
+      { id: '70', name: 'Price Group'},
+      { id: '71', name: 'Contact Type'},
+      { id: '72', name: 'Area'},
+      { id: '73', name: 'Currency'},
+      { id: '74', name: 'Supplier Terms'},
+      { id: '75', name: 'Tax'},
+      { id: '76', name: 'Terms'},
+      { id: '77', name: 'Holiday List'},
+      { id: '78', name: 'Location'},
+      { id: '79', name: 'Accounts'},
+      { id: '80', name: 'Product Type'},
     ],
     msg: 'Success',
   })
@@ -192,6 +203,168 @@ app.post('/getValueListById', (req, res, next) => {
         return res.status(200).send({
           data: result,
           msg: 'Success',
+        });
+      }
+    }
+  );
+});
+
+
+app.get("/getTaxType", (req, res, next) => {
+  db.query(
+    `Select s.*
+  From valuelist s
+  WHERE s.key_text='Tax Type' `,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
+
+
+
+app.get("/getPriceGroup", (req, res, next) => {
+  db.query(
+    `Select s.*
+  From valuelist s
+  WHERE s.key_text='Price Group' `,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
+
+app.get("/getTeam", (req, res, next) => {
+  db.query(
+    `SELECT s.*
+     FROM valuelist s
+     WHERE s.key_text = 'Staff Team'`,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
+
+app.get("/getContactType", (req, res, next) => {
+  db.query(
+    `Select s.*
+  From valuelist s
+  WHERE s.key_text='Contact Type' `,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
+
+app.get("/getArea", (req, res, next) => {
+  db.query(
+    `Select s.*
+  From valuelist s
+  WHERE s.key_text='AmproArea' `,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
+app.get("/getCurrency", (req, res, next) => {
+  db.query(
+    `Select s.*
+  From valuelist s
+  WHERE s.key_text='Currency' `,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
+
+app.get("/getSupplierTerms", (req, res, next) => {
+  db.query(
+    `Select s.*
+  From valuelist s
+  WHERE s.key_text='Delivery Terms' `,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
         });
       }
     }

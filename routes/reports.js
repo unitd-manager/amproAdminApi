@@ -121,6 +121,7 @@ app.post('/getPayslipGeneratedReport', (req, res, next) => {
   ,pm.cpf_employer
   ,pm.basic_pay
   ,pm.total_basic_pay_for_month
+  ,pm.ot_amount
   ,pm.net_total
   ,e.employee_name
   ,e.date_of_birth AS dob
@@ -1366,7 +1367,11 @@ app.get('/getPurchaseGstReport', (req, res, next) => {
               ,j.department
               ,pm.basic_pay
               , first_name,date_of_birth, DATE_FORMAT(FROM_DAYS(DATEDIFF(NOW(), date_of_birth)), '%Y') + 0 AS age
-              ,(pm.allowance1+pm.allowance2+pm.allowance3+pm.allowance4+pm.allowance5+pm.allowance6) AS total_allowance
+               ,(
+        SELECT SUM(pmi.allowance1 + pmi.allowance2 + pmi.allowance3 + pmi.allowance4 + pmi.allowance5)
+        FROM payroll_management pmi
+        WHERE pmi.employee_id = e.employee_id
+      ) AS total_allowance
                ,pm.total_deductions
               ,pm.net_total
               ,e.nric_no
@@ -1461,14 +1466,63 @@ app.get('/getPurchaseGstReport', (req, res, next) => {
   });
 
  
+// app.post("/getSalesReport", (req, res, next) => {
+//   db.query(
+//     `SELECT
+//     i.invoice_date,
+//     i.invoice_code,
+//     c.company_name,
+//     SUM(it.total_cost) AS invoiceAmount,
+//     SUM(i.invoice_amount - it.total_cost) AS gst,
+//     SUM(i.invoice_amount) AS total,
+//     SUM(ir.amount) AS received,
+//     SUM(i.invoice_amount - ir.amount) AS balance
+// FROM
+//     invoice i
+// LEFT JOIN
+//     invoice_receipt_history ir ON ir.invoice_id = i.invoice_id
+// LEFT JOIN
+//     project p ON p.project_id = i.project_id
+// LEFT JOIN
+//     invoice_item it ON it.invoice_id = i.invoice_id
+// LEFT JOIN
+//     company c ON c.company_id = p.company_id
+// WHERE 
+//     i.invoice_id !=''
+// GROUP BY
+//     i.invoice_date,
+//     i.invoice_code,
+//     c.company_name`,
+//     (err, result) => {
+//       if (err) {
+//         console.log("error: ", err);
+//         return res.status(400).send({
+//           data: err,
+//           msg: "failed",
+//         });
+//       } else {
+//         return res.status(200).send({
+//           data: result,
+//           msg: "Success",
+//         });
+//       }
+//     }
+//   );
+// });
+
 app.post("/getSalesReport", (req, res, next) => {
   db.query(
     `SELECT
+i.invoice_id,
     i.invoice_date,
     i.invoice_code,
+    i.invoice_amount,
     c.company_name,
-    SUM(it.total_cost) AS invoiceAmount,
-    SUM(i.invoice_amount - it.total_cost) AS gst,
+    i.tax,
+    it.invoice_item_id,
+    ir.invoice_receipt_history_id,
+    SUM(it.total) AS invoiceAmount,
+    SUM(i.invoice_amount - it.total) AS gst,
     SUM(i.invoice_amount) AS total,
     SUM(ir.amount) AS received,
     SUM(i.invoice_amount - ir.amount) AS balance
@@ -1477,11 +1531,9 @@ FROM
 LEFT JOIN
     invoice_receipt_history ir ON ir.invoice_id = i.invoice_id
 LEFT JOIN
-    project p ON p.project_id = i.project_id
-LEFT JOIN
     invoice_item it ON it.invoice_id = i.invoice_id
 LEFT JOIN
-    company c ON c.company_id = p.company_id
+    company c ON c.company_id = i.company_id
 WHERE 
     i.invoice_id !=''
 GROUP BY
@@ -1539,34 +1591,67 @@ app.get('/getInvoiveByMonth', (req, res, next) => {
 });
 
 
-app.get("/getInvoiceByYearReport", (req, res, next) => {
-  const { recordType } = req.query;
-  db.query(
-    ` SELECT DATE_FORMAT(i.invoice_date, '%Y') AS invoice_year
-              ,(SUM(i.invoice_amount )) AS invoice_amount_yearly
-              ,o.record_type
-        FROM invoice i
-        LEFT JOIN orders o   ON (o.order_id   = i.order_id) 
-        where o.record_type!=''
- AND i.status != 'cancelled'
- ${recordType ? 'AND o.record_type = ?' : ''}
- GROUP BY DATE_FORMAT(i.invoice_date, '%Y'),o.record_type`
- , [recordType], (err, result) => {
-      if (err) {
-        console.log("error: ", err);
-        return res.status(400).send({
-          data: err,
-          msg: "failed",
-        });
-      } else {
-        return res.status(200).send({
-          data: result,
-          msg: "Success",
-        });
-      }
+
+app.get('/getInvoiceByMonthDashboard', (req, res, next) => {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+
+  db.query(`
+    SELECT DATE_FORMAT(invoice_date, '%b %Y') AS invoice_month,
+           SUM(invoice_amount) AS invoice_amount_monthly
+    FROM invoice
+    WHERE status != 'Cancelled'
+      AND YEAR(invoice_date) = ?
+    GROUP BY DATE_FORMAT(invoice_date, '%Y-%m')
+    ORDER BY invoice_date
+  `, [currentYear], (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+      });
     }
-  );
+  });
 });
+
+
+
+
+
+// app.get("/getInvoiceByYearReport", (req, res, next) => {
+//   const { recordType } = req.query;
+//   db.query(
+//     ` SELECT DATE_FORMAT(i.invoice_date, '%Y') AS invoice_year
+//               ,(SUM(i.invoice_amount )) AS invoice_amount_yearly
+//               ,o.record_type
+//         FROM invoice i
+//         LEFT JOIN orders o   ON (o.order_id   = i.order_id) 
+//         where o.record_type!=''
+//  AND i.status != 'cancelled'
+//  ${recordType ? 'AND o.record_type = ?' : ''}
+//  GROUP BY DATE_FORMAT(i.invoice_date, '%Y'),o.record_type`
+//  , [recordType], (err, result) => {
+//       if (err) {
+//         console.log("error: ", err);
+//         return res.status(400).send({
+//           data: err,
+//           msg: "failed",
+//         });
+//       } else {
+//         return res.status(200).send({
+//           data: result,
+//           msg: "Success",
+//         });
+//       }
+//     }
+//   );
+// });
 
 app.post("/getAccountReport", (req, res, next) => {
   db.query(
@@ -1707,6 +1792,119 @@ SELECT DISTINCT *
 }
 );
 });
+
+app.get('/getCompany', (req, res, next) => {
+  db.query("SELECT company_id, company_name FROM company",
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        result(err, null);
+        return;
+      }
+      if (result.length == 0) {
+        return res.status(400).send({
+          msg: 'No result found'
+        });
+      } else {
+            return res.status(200).send({
+              data: result,
+              msg:'Success'
+            });
+
+        }
+ 
+    }
+  );
+});
+
+// In your routes or server file
+app.get("/getInvoiceByYearReport", (req, res) => {
+  const { company_id } = req.query;
+
+  let query = `
+    SELECT 
+      DATE_FORMAT(i.invoice_date, '%Y') AS invoice_year,
+      SUM(i.invoice_amount) AS invoice_amount_yearly,
+      o.company_id
+    FROM invoice i
+    LEFT JOIN sales_order o ON o.sales_order_id = i.sales_order_id
+    WHERE o.company_id IS NOT NULL
+      AND o.company_id != ''
+      AND i.status != 'cancelled'
+  `;
+
+  const params = [];
+
+  if (company_id) {
+    query += ` AND o.company_id = ?`;
+    params.push(company_id);
+  }
+
+  query += `
+    GROUP BY DATE_FORMAT(i.invoice_date, '%Y'), o.company_id
+    ORDER BY invoice_year DESC
+  `;
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      return res.status(400).send({
+        data: err,
+        msg: "Failed to fetch invoice report",
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: "Success",
+      });
+    }
+  });
+});
+
+app.get("/getInvoiceByMonthReport", (req, res) => {
+  const { company_id } = req.query;
+
+  let query = `
+    SELECT 
+      DATE_FORMAT(i.invoice_date, '%Y-%m') AS invoice_month,
+      SUM(i.invoice_amount) AS invoice_amount_monthly,
+      o.company_id
+    FROM invoice i
+    LEFT JOIN sales_order o ON o.sales_order_id = i.sales_order_id
+    WHERE o.company_id IS NOT NULL
+      AND o.company_id != ''
+      AND i.status != 'cancelled'
+  `;
+
+  const params = [];
+
+  if (company_id) {
+    query += ` AND o.company_id = ?`;
+    params.push(company_id);
+  }
+
+  query += `
+    GROUP BY invoice_month, o.company_id
+    ORDER BY invoice_month DESC
+  `;
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.log("Error fetching monthly invoice report: ", err);
+      return res.status(400).send({
+        data: err,
+        msg: "Failed to fetch invoice report",
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: "Success",
+      });
+    }
+  });
+});
+
+
 
 
 app.get('/secret-route', userMiddleware.isLoggedIn, (req, res, next) => {

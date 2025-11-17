@@ -59,6 +59,172 @@ app.get("/getAttendance", (req, res, next) => {
   );
 });
 
+app.get('/getProjects', (req, res, next) => {
+  db.query(`SELECT p.title
+  ,p.project_id
+  ,s.staff_id
+  ,s.employee_id
+  FROM project p LEFT JOIN (staff s) ON (p.staff_id = s.staff_id)
+  WHERE p.project_id != ''
+  ORDER BY p.title DESC`,
+    (err, result) => {
+       
+      if (err) {
+        return res.status(400).send({
+          msg: 'No result found'
+        });
+      } else {
+            return res.status(200).send({
+              data: result,
+              msg:'Success'
+            });
+        }
+    }
+  );
+});
+
+app.post("/insertAppAttendance", (req, res, next) => {
+
+    let data = {
+    project_id : req.body.project_id,
+    staff_id : req.body.staff_id,
+    site_id : req.body.site_id,
+    employee_id: req.body.employee_id,
+    date: req.body.date,
+    day_check_in_time: req.body.day_check_in_time,
+    day_check_out_time: req.body.day_check_out_time,
+    night_check_In_time: req.body.night_check_In_time,
+    night_check_out_time:req.body.night_check_out_time,
+    day_checkIn_latitude:req.body.day_checkIn_latitude,
+    day_checkIn_longitude:req.body.day_checkIn_longitude,
+    night_checkIn_latitude:req.body.night_checkIn_latitude,
+    night_checkIn_longitude:req.body.night_checkIn_longitude,
+  };
+  sql = "INSERT INTO smart_attendance SET ?";
+  let query = db.query(sql, data, (err, result) => {
+    if (err) {
+      return res.status(400).send({
+        data: err,
+        msg: "Cannot create attendance",
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: "attendance created",
+      });
+    }
+  });
+});
+
+app.post('/updateAppAttendance', (req, res, next) => {
+  db.query(`UPDATE smart_attendance
+            SET day_check_out_time=${db.escape(req.body.day_check_out_time)}
+            ,night_check_out_time=${db.escape(req.body.night_check_out_time)}
+            ,day_checkOut_latitude=${db.escape(req.body.day_checkOut_latitude)}
+            ,day_checkOut_longitude=${db.escape(req.body.day_checkOut_longitude)}
+            ,night_checkOut_latitude=${db.escape(req.body.night_checkOut_latitude)}
+            ,night_checkOut_longitude=${db.escape(req.body.night_checkOut_longitude)}
+            ,file=${db.escape(req.body.file)}
+            WHERE id =  ${db.escape(req.body.id)}
+            `,
+    (err, result) =>{
+      if (err) {
+        console.log("error: ", err);
+        return;
+      } else {
+            return res.status(200).send({
+              data: result.data,
+              msg:'Success'
+            });
+      }
+     }
+  );
+});
+
+app.get("/getEmployeeData", (req, res, next) => {
+  db.query(
+    `SELECT sa.id  
+  ,sa.staff_id
+  ,sa.date
+  ,sa.day_check_in_time
+  ,sa.day_check_out_time
+  ,sa.night_check_In_time
+  ,sa.night_check_out_time
+  ,p.title
+  FROM smart_attendance sa
+  LEFT JOIN project p ON (p.project_id = sa.project_id)
+  WHERE sa.project_id!=''
+  ORDER BY sa.id DESC`,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return;
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
+
+app.get("/getEmployeeDataSite", (req, res, next) => {
+  db.query(
+    `SELECT sa.id  
+  ,sa.staff_id
+  ,sa.date
+  ,sa.day_check_in_time
+  ,sa.day_check_out_time
+  ,sa.night_check_In_time
+  ,sa.night_check_out_time
+  ,s.title
+  ,sf.first_name
+  FROM smart_attendance sa
+  LEFT JOIN site s ON (s.site_id = sa.site_id)
+   LEFT JOIN staff sf ON (sf.staff_id = sa.staff_id)
+  WHERE sa.id!=''
+  ORDER BY sa.id DESC`,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return;
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
+app.get('/getTodayAttendance', async (req, res) => {
+  const { staff_id, date } = req.query;
+
+  if (!staff_id || !date) {
+    return res.status(400).json({ error: 'Missing staff_id or date' });
+  }
+
+  try {
+    db.query(
+      'SELECT * FROM smart_attendance WHERE staff_id = ? AND date = ? ORDER BY id DESC',
+      [staff_id, date],
+      (err, rows) => {
+        if (err) {
+          console.error('Error fetching attendance:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        }
+        return res.json({ data: rows }); // Return all records as an array
+      }
+    );
+  } catch (error) {
+    console.error('Error fetching attendance:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get("/getStaff", (req, res, next) => {
   db.query(
     `SELECT s.staff_id

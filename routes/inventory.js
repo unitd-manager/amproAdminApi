@@ -17,245 +17,6 @@ app.use(fileUpload({
     createParentPath: true
 }));
 
-// app.post('/import/excel', ( req, res ) => {
-//     const { data } = req.body;
-//     const parsed_data = JSON.parse(data);
-
-//     const limit = parsed_data.length;
-//     const count = [];
-//     const connection = db;
-    
-//     connection.beginTransaction(
-//         ( err ) => {
-//             if ( err )
-//             {
-//                 connection.rollback(() => {console.log(err);});
-//             }else
-//             {
-              
-//                     connection.query(
-//                         "INSERT INTO purchase_order (`title`) VALUES (?);",
-//                         [`Purchase from SDO`],
-//                         ( err,r ) => {
-//                             if( err ){
-//                                 connection.rollback(() => {console.log(err);});
-//                                 res.status(503).send(err);
-//                                 res.end();
-//                             }else 
-//                             {
-//                                  insertRows(connection,r);
-//                             }
-//                         }
-//                     );
-                  
-//             }
-//         }
-//     )
-//     function insertRows(connection,r) {
-//         connection.query(
-//             "INSERT INTO product (`title`, `product_code`, `description`, `price`,`unit`, `product_type`,  `qty_in_stock`) VALUES (?,?,?,?,?,?,?);",
-//             [parsed_data[count.length].ProductName, parsed_data[count.length].ProductCode, parsed_data[count.length].Description, parsed_data[count.length].Price,parsed_data[count.length].Unit, parsed_data[count.length].Category, parsed_data[count.length].Stock],
-//             ( err, rslt ) => {
-//                 if( err ){
-//                     connection.rollback(() => {console.log(err);});
-//                     res.send(err);
-//                     res.end();
-//                 }else 
-//                 {
-//                     connection.query(
-//                         "INSERT INTO inventory (`product_id`,`actual_stock`) VALUES (?,?);",
-//                         [rslt.insertId,parsed_data[count.length].Stock],
-//                         ( err,reslt ) => {
-//                             if( err ){
-//                                 connection.rollback(() => {console.log(err);});
-//                                 res.status(503).send(err);
-//                                 res.end();
-//                             }else 
-//                             {
-//                                 connection.query(
-//                        "INSERT INTO po_product (`purchase_order_id`,`item_title`, `product_id`, `cost_price`,`unit`, `qty`) VALUES (?,?,?,?,?,?);",
-//             [r.insertId,parsed_data[count.length].ProductName,rslt.insertId, parsed_data[count.length].Price,parsed_data[count.length].Unit, parsed_data[count.length].Stock],
-//                         ( err,reslt ) => {
-//                             if( err ){
-//                                 connection.rollback(() => {console.log(err);});
-//                                 res.status(503).send(err);
-//                                 res.end();
-//                             }else 
-//                             {
-//                                 next(connection, parsed_data[count.length].title,r);
-//                             }
-//                         }
-//                     );
-                                
-//                             }
-//                         }
-//                     );
-//                 }
-//             }
-//         );
-//     };
-
-//     function next(connection, title,r) {
-//         if ( ( count.length + 1 ) === limit )
-//         {
-//             connection.commit((err) => {
-//                 if ( err ) {
-//                     connection.rollback(() => {console.log(err);});
-//                     res.status(503).send('err');
-//                     res.end();
-//                 }else
-//                 {
-//                     console.log("RECORDS INSERTED!!!");
-//                     res.send('SUCCESS');
-//                     res.end();
-//                 }
-//             });
-//         }else {
-//             console.log(`${title} inserted`);
-//             count.push(1);
-//             insertRows(connection,r);
-//         }
-//     }
-// } );
-
-app.post('/import/excel', (req, res) => {
-  const { data } = req.body;
-  const parsed_data = JSON.parse(data);
-
-  const limit = parsed_data.length;
-  const connection = db; // Assuming `db` is your MySQL connection object.
-
-  // Start the transaction
-  connection.beginTransaction((err) => {
-      if (err) {
-          connection.rollback(() => {
-              console.log(err);
-              res.status(500).send('Error starting transaction');
-          });
-          return;
-      }
-
-      // Insert into purchase_order table
-      connection.query(
-          "INSERT INTO purchase_order (`title`) VALUES (?);",
-          ['Purchase from SDO'],
-          (err, purchaseResult) => {
-              if (err) {
-                  handleError(err, connection, res);
-                  return;
-              }
-
-              // Insert product and related media records
-              insertRows(connection, purchaseResult.insertId, 0);
-          }
-      );
-  });
-
-  // Function to insert product records
-  function insertRows(connection, purchaseOrderId, index) {
-      if (index >= limit) {
-          // If all rows are inserted, commit the transaction
-          connection.commit((err) => {
-              if (err) {
-                  handleError(err, connection, res);
-              } else {
-                  console.log("RECORDS INSERTED SUCCESSFULLY!!!");
-                  res.send('SUCCESS');
-              }
-          });
-          return;
-      }
-
-      const item = parsed_data[index];
-         
-         connection.query(
-           'SELECT c.category_id, c.category_title FROM category c WHERE c.category_title = ?',
-           [item.Category],
-          (err, categoryResult) => {
-              if (err) {
-                  handleError(err, connection, res);
-                  return;
-              }
-      // Insert into the product table
-            const categoryId = categoryResult.length > 0 ? categoryResult[0].category_id : null;
-
-      connection.query(
-          "INSERT INTO product (`title`, `product_code`, `alternative_product_name`, `price`, `unit`, `product_type`, `qty_in_stock`,`category_id`,`keyword_search`,`brand`,`gst`) VALUES (?,?,?,?,?,?,?,?,?,?,?);",
-          [item.ProductName, item.ProductCode, item.AlternativeProductName, item.Price, item.Unit, item.Category, item.Stock,categoryId,item.Keyword,item.Brand,item.Gst],
-          (err, productResult) => {
-              if (err) {
-                  handleError(err, connection, res);
-                  return;
-              }
-
-              // Insert inventory record
-              connection.query(
-                  "INSERT INTO inventory (`product_id`, `actual_stock`) VALUES (?, ?);",
-                  [productResult.insertId, item.Stock],
-                  (err) => {
-                      if (err) {
-                          handleError(err, connection, res);
-                          return;
-                      }
-
-                      // Insert media records
-                      const filenames = [item.FirstImage, item.SecondImage, item.ThirdImage];
-                      insertMediaRecords(connection, productResult.insertId, filenames, 0, purchaseOrderId, item, index);
-                  }
-              );
-          }
-      );
-          }
-          );
-  }
-
-  // Function to insert media records
-  function insertMediaRecords(connection, productId, filenames, mediaIndex, purchaseOrderId, item, index) {
-      if (mediaIndex >= filenames.length) {
-          // Insert po_product record once media records are done
-          connection.query(
-              "INSERT INTO po_product (`purchase_order_id`, `item_title`, `product_id`, `cost_price`, `unit`, `qty`) VALUES (?,?,?,?,?,?);",
-              [purchaseOrderId, item.ProductName, productId, item.Price, item.Unit, item.Stock],
-              (err) => {
-                  if (err) {
-                      handleError(err, connection, res);
-                      return;
-                  }
-
-                  // Move to the next product record
-                  insertRows(connection, purchaseOrderId, index + 1);
-              }
-          );
-          return;
-      }
-
-      // Insert each media file one by one
-      connection.query(
-          "INSERT INTO media (`record_id`, `file_name`, `room_name`) VALUES (?, ?, ?);",
-          [productId, filenames[mediaIndex], 'Product'],
-          (err) => {
-              if (err) {
-                  handleError(err, connection, res);
-                  return;
-              }
-
-              // Continue inserting the next media record
-              insertMediaRecords(connection, productId, filenames, mediaIndex + 1, purchaseOrderId, item, index);
-          }
-      );
-  }
-
-  // Centralized error handling function
-  function handleError(err, connection, res) {
-      console.error('Error:', err);
-      connection.rollback(() => {
-          console.log('Transaction Rolled Back');
-          res.status(503).send('An error occurred during the process.');
-      });
-  }
-});
-
-
 app.get('/getinventoryMain', (req, res, next) => {
   db.query(`SELECT i.inventory_code,
   i.inventory_id
@@ -264,28 +25,29 @@ app.get('/getinventoryMain', (req, res, next) => {
   ,p.product_type
   ,c.company_name
   ,p.title AS product_name
-  ,p.item_code
+  ,p.product_code
   ,p.unit
   ,i.notes
   ,i.creation_date
   ,i.modification_date
+  ,i.created_by
+  ,i.modified_by
   ,p.product_code
-  ,i.actual_stock AS stock
-  ,i.current_stock
+  ,i.actual_stock As stock
 FROM inventory i
 LEFT JOIN (product p) ON (p.product_id = i.product_id)
 LEFT JOIN (product_company pc) ON (pc.product_id = p.product_id)
 LEFT JOIN (supplier c) ON (c.supplier_id = pc.company_id)
 WHERE i.inventory_id != ''
-Group BY i.inventory_id`,
+ORDER BY i.inventory_id DESC`,
     (err, result) => {
        
       if (err) {
-        console.log('error: ', err);
+        console.log('error: ', err)
         return res.status(400).send({
           data: err,
           msg: 'failed',
-        });
+        })
       } else {
         return res.status(200).send({
           data: result,
@@ -297,9 +59,80 @@ Group BY i.inventory_id`,
   );
 });
 
+app.post('/import/excel', ( req, res ) => {
+  const { data } = req.body;
+  const parsed_data = JSON.parse(data);
+
+  const limit = parsed_data.length;
+  const count = [];
+  const connection = db;
+  
+  connection.beginTransaction(
+      ( err ) => {
+          if ( err )
+          {
+              connection.rollback(() => {console.log(err);});
+          }else
+          {
+              insertRows(connection);
+          }
+      }
+  )
+  function insertRows(connection) {
+      connection.query(
+          "INSERT INTO product (title, product_code, qty_in_stock, product_type,price,unit,description) VALUES (?,?,?,?,?,?,?);",
+          [parsed_data[count.length].ProductName, parsed_data[count.length].ProductCode, parsed_data[count.length].Stock, parsed_data[count.length].Category,parsed_data[count.length].Price, parsed_data[count.length].Unit, parsed_data[count.length].Description],
+          ( err, rslt ) => {
+              if( err ){
+                  connection.rollback(() => {console.log(err);});
+                  res.send(err);
+                  res.end();
+              }else 
+              {
+                  connection.query(
+                      "INSERT INTO inventory (product_id,actual_stock) VALUES (?,?);",
+                      [rslt.insertId,parsed_data[count.length].Stock],
+                      ( err ) => {
+                          if( err ){
+                              connection.rollback(() => {console.log(err);});
+                              res.send(err);
+                              res.end();
+                          }else 
+                          {
+                              next(connection, parsed_data[count.length].title);
+                          }
+                      }
+                  );
+              }
+          }
+      );
+  };
+
+  function next(connection, title) {
+      if ( ( count.length + 1 ) === limit )
+      {
+          connection.commit((err) => {
+              if ( err ) {
+                  connection.rollback(() => {console.log(err);});
+                  res.send('err');
+                  res.end();
+              }else
+              {
+                  console.log("RECORDS INSERTED!!!");
+                  res.send('SUCCESS');
+                  res.end();
+              }
+          });
+      }else {
+          count.push(1);
+          insertRows(connection);
+   }
+ }
+});
+
 app.post('/getinventoryById', (req, res, next) => {
-  db.query(`SELECT i.inventory_code,
-  i.inventory_id
+  db.query(`SELECT i.inventory_code
+  ,i.inventory_id
   ,i.minimum_order_level
   ,p.product_id AS productId
   ,p.product_type
@@ -309,18 +142,96 @@ app.post('/getinventoryById', (req, res, next) => {
   ,p.unit
   ,i.notes
   ,i.creation_date
-  ,i.modification_date
-  ,i.current_stock
-  ,p.product_code
-  ,i.actual_stock AS stock
   ,i.created_by
   ,i.modified_by
+  ,i.modification_date
+  ,p.product_code
+  ,i.actual_stock AS stock
 FROM inventory i
 LEFT JOIN (product p) ON (p.product_id = i.product_id)
 LEFT JOIN (product_company pc) ON (pc.product_id = p.product_id)
 LEFT JOIN (supplier c) ON (c.supplier_id = pc.company_id)
-WHERE i.inventory_id = ${db.escape(req.body.productId)}
-ORDER BY stock DESC`,
+WHERE i.inventory_id = ${db.escape(req.body.inventory_id)}`,
+    (err, result) => {
+       
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+ 
+    }
+  );
+});
+
+app.post('/getstockById', (req, res, next) => {
+  db.query(`SELECT p.*
+  ,i.actual_stock
+FROM inventory i
+LEFT JOIN (product p) ON (p.product_id = i.product_id)
+WHERE p.product_id = ${db.escape(req.body.product_id)}`,
+    (err, result) => {
+       
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+ 
+    }
+  );
+});
+
+app.get('/getinventory', (req, res, next) => {
+  db.query(`SELECT
+  i.inventory_code,
+  i.inventory_id,
+  i.minimum_order_level,
+  p.product_id AS productId,
+  p.product_type,
+  c.company_name,
+  p.title AS product_name,
+  p.item_code,
+  p.unit,
+  i.notes,
+  i.creation_date,
+  i.modification_date,
+  p.product_code,
+  ((SELECT SUM(po.qty) FROM po_product po WHERE po.product_id = p.product_id) - (SELECT SUM(pm.quantity) FROM project_materials pm WHERE pm.product_id = p.product_id)) AS stock,
+  orderSummary.materials_used,
+  paidSummary.materials_purchased,
+  (paidSummary.materials_purchased -orderSummary.materials_used ) AS actual_stock,
+  i.actual_stock AS name
+FROM inventory i
+LEFT JOIN product p ON p.product_id = i.product_id
+LEFT JOIN product_company pc ON pc.product_id = p.product_id
+LEFT JOIN supplier c ON c.supplier_id = pc.company_id
+LEFT JOIN (
+  SELECT SUM(pm.quantity) AS materials_used, pm.product_id
+  FROM project_materials pm
+  GROUP BY pm.product_id
+) AS orderSummary ON orderSummary.product_id = p.product_id
+LEFT JOIN (
+  SELECT SUM(po.qty) AS materials_purchased, po.product_id
+  FROM po_product po
+  GROUP BY po.product_id
+) AS paidSummary ON paidSummary.product_id = p.product_id
+WHERE i.inventory_id != '';
+`,
     (err, result) => {
        
       if (err) {
@@ -365,6 +276,30 @@ app.post('/editinventoryMain', (req, res, next) => {
      }
   );
 });
+
+app.post('/editInventoryStock11', (req, res, next) => {
+  db.query(
+    `UPDATE inventory  
+     SET actual_stock = ${db.escape(req.body.qty_in_stock)},
+     modification_date = NOW()
+     WHERE product_id = ${db.escape(req.body.product_id)}`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        });
+      }
+    }
+  );
+});
+
 
 app.post('/editInventoryStock', (req, res) => {
   const poProductId = req.body.po_product_id;
@@ -488,11 +423,30 @@ app.post('/editInventoryStock', (req, res) => {
 });
 
 
-
+app.post('/updateInventoryStock', (req, res, next) => {
+  db.query(`UPDATE inventory SET actual_stock = ${db.escape(req.body.stock)}
+            ,modification_date=${db.escape(new Date())}
+             WHERE inventory_id =  ${db.escape(req.body.inventory_id)}`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+     }
+  );
+});
 
 app.post('/insertinventory', (req, res, next) => {
 
-  let data = {creation_date: req.body.creation_date,
+  let data = {creation_date: new Date().toISOString().slice(0, 19).replace("T", " "),
               product_id:req.body.product_id,
               modification_date: req.body.modification_date,
               flag: req.body.flag,
@@ -526,8 +480,6 @@ app.post('/insertinventory', (req, res, next) => {
     }
   });
 });
-
-
 
 app.delete('/deleteInventory', (req, res, next) => {
 
@@ -570,7 +522,6 @@ app.post('/insertsite', (req, res, next) => {
               ad_ops_site_name: req.body.ad_ops_site_name,
               additional_meta_tags: req.body.additional_meta_tags,
               additional_analytics_script: req.body.additional_analytics_script,
-            
           };
 
   let sql = "INSERT INTO site SET ?";
@@ -649,6 +600,43 @@ WHERE pop.product_id != ''`,
   );
 });
 
+// app.post('/gettabPurchaseOrderLinkedById', (req, res, next) => {
+//   db.query(`SELECT pop.cost_price
+//   ,pop.qty
+//   ,com.company_name AS supplier_name
+//   ,po.po_code
+//   ,po.purchase_order_date
+//   ,po.purchase_order_id
+//   ,po.creation_date
+//   ,p.title
+//   ,c.company_name
+//   ,st.title as site_title
+// FROM po_product pop
+// LEFT JOIN purchase_order po ON po.purchase_order_id = pop.purchase_order_id
+// LEFT JOIN project p ON p.project_id = po.project_id
+// LEFT JOIN company c ON c.company_id = p.company_id
+// LEFT JOIN supplier com ON pop.supplier_id = com.supplier_id
+// LEFT JOIN site st ON st.site_id = po.site_id
+// WHERE pop.product_id = ${db.escape(req.body.product_id)}`,
+//     (err, result) => {
+       
+//       if (err) {
+//         console.log('error: ', err)
+//         return res.status(400).send({
+//           data: err,
+//           msg: 'failed',
+//         })
+//       } else {
+//         return res.status(200).send({
+//           data: result,
+//           msg: 'Success',
+//             });
+//       }
+ 
+//     }
+//   );
+// });
+
 app.post('/gettabPurchaseOrderLinkedById', (req, res, next) => {
   db.query(`SELECT pop.cost_price
   ,pop.qty
@@ -656,6 +644,9 @@ app.post('/gettabPurchaseOrderLinkedById', (req, res, next) => {
   ,po.purchase_order_date
   ,po.purchase_order_id
   ,po.creation_date
+  ,po.supplier_id
+  ,po.title
+  ,com.company_name
 FROM po_product pop
 LEFT JOIN purchase_order po ON po.purchase_order_id = pop.purchase_order_id
 LEFT JOIN supplier com ON pop.supplier_id = com.supplier_id
@@ -678,6 +669,7 @@ WHERE pop.product_id = ${db.escape(req.body.product_id)}`,
     }
   );
 });
+
 
 app.get('/getTabProjectLinked', (req, res, next) => {
   db.query(`SELECT DISTINCT p.project_id
@@ -745,7 +737,9 @@ app.post('/getAdjustStock', (req, res, next) => {
            al.created_by,
            al.creation_date
            FROM adjust_stock_log al
-           WHERE al.inventory_id = ${db.escape(req.body.inventory_id)}`,
+           WHERE al.inventory_id = ${db.escape(
+        req.body.inventory_id,
+      )} ORDER BY al.adjust_stock_log_id DESC `,
     (err, result) => {
        
       if (err) {
@@ -801,8 +795,6 @@ app.post('/insertadjust_stock_log', (req, res, next) => {
               modified_by: req.user,
               created_by: req.body.created_by,
               current_stock: req.body.current_stock,
-             
-            
           };
 
   let sql = "INSERT INTO adjust_stock_log SET ?";
@@ -822,11 +814,99 @@ app.post('/insertadjust_stock_log', (req, res, next) => {
   });
 });
 
+app.post('/getProductQuantityOld', (req, res, next) => {
+  db.query(`select i.actual_stock,
+  (SELECT(sum(po.qty)) FROM po_product po Where po.product_id= ${db.escape(req.body.product_id)} ) as materials_purchased , 
+  (select (sum(pm.quantity)) FROM project_materials pm Where pm.product_id=${db.escape(req.body.product_id)}) as materials_used 
+  from po_product po 
+  LEFT JOIN project_materials pm ON pm.product_id = po.product_id 
+  LEFT JOIN product p ON p.product_id = pm.product_id 
+  LEFT JOIN inventory i ON i.product_id = po.product_id
+  where p.product_id=${db.escape(req.body.product_id)} `,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+ 
+    }
+  );
+});
+
 app.post('/getProductQuantity', (req, res, next) => {
-  db.query(`select (SELECT(sum(po.qty)) FROM po_product po Where po.product_id= ${db.escape(req.body.product_id)} ) as materials_purchased  
-from po_product po 
-  LEFT JOIN product p ON p.product_id = po.product_id 
-  where p.product_id= ${db.escape(req.body.product_id)} `,
+  db.query(`SELECT
+  i.actual_stock,
+  (SELECT SUM(po.qty) 
+   FROM po_product po 
+   WHERE po.product_id = ${db.escape(req.body.product_id)}) AS materials_purchased,
+
+  (SELECT SUM(ii.quantity) 
+   FROM invoice_item ii 
+   WHERE ii.product_id = ${db.escape(req.body.product_id)}) AS materials_sold
+
+FROM po_product po
+LEFT JOIN product p ON p.product_id = po.product_id
+LEFT JOIN inventory i ON i.product_id = po.product_id
+WHERE p.product_id = ${db.escape(req.body.product_id)}
+LIMIT 1; `,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+ 
+    }
+  );
+});
+
+app.post('/getPurchasedMaterials', (req, res, next) => {
+  db.query(`SELECT
+    SUM(pm.quantity) AS purchased_material
+FROM
+    project_materials pm
+WHERE
+    pm.product_id =${db.escape(req.body.product_id)} `,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+ 
+    }
+  );
+});
+
+app.post('/getUsedMaterials', (req, res, next) => {
+  db.query(`SELECT
+    (SUM(po.qty)) AS material_used
+FROM
+    po_product po
+WHERE
+    po.product_id= ${db.escape(req.body.product_id)} `,
     (err, result) => {
       if (err) {
         console.log('error: ', err)

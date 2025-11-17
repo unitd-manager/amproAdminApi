@@ -35,6 +35,9 @@ app.get('/getTranslationforHRLeave', (req, res, next) => {
 );
 });
 
+ 
+  
+
 app.get('/getLeave', (req, res, next) => {
     db.query(`SELECT l.status
     ,l.leave_id
@@ -442,7 +445,7 @@ app.get('/getLeave', (req, res, next) => {
   , modification_date: req.body.modification_date
   , created_by: req.body.created_by
   , modified_by: req.body.modified_by
-  , site_id: req.body.site_id
+  
   , no_of_days: req.body.no_of_days
   , status	: 'Applied'	
   , no_of_days_next_month	: req.body.no_of_days_next_month	

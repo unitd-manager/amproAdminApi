@@ -18,7 +18,7 @@ app.use(fileUpload({
 }));
 
 app.get('/getSupplier', (req, res, next) => {
-  db.query(`SELECT s.company_name
+  db.query(`SELECT s.company_name  AS supplier_name
   ,s.supplier_id
   ,s.email
   ,s.fax
@@ -35,8 +35,10 @@ app.get('/getSupplier', (req, res, next) => {
   ,s.payment_details
   ,s.terms
   ,s.phone
+  ,s.supplier_code
   ,gc.name AS country_name 
-  FROM supplier s LEFT JOIN (geo_country gc) ON (s.address_country = gc.country_code) WHERE s.supplier_id != ''`,
+  FROM supplier s LEFT JOIN (geo_country gc) ON (s.address_country = gc.country_code) WHERE s.supplier_id != ''
+  ORDER By s.supplier_id DESC`,
   (err, result) => {
     if (err) {
       console.log('error: ', err)
@@ -53,6 +55,8 @@ app.get('/getSupplier', (req, res, next) => {
   }
 );
 });
+
+
 app.post('/get-SupplierById', (req, res, next) => {
   db.query(`SELECT s.company_name
   ,s.supplier_id
@@ -70,6 +74,25 @@ app.post('/get-SupplierById', (req, res, next) => {
   ,s.payment_details
   ,s.terms
   ,s.phone
+  ,s.supplier_code
+  ,s.user_name
+  ,s.password
+  ,s.price_group
+  ,s.tax
+  ,s.contact_type
+  ,s.currency
+  ,s.area
+  ,s.is_active
+  ,s.website
+  ,s.hand_phone_no
+  ,s.cheque_print_name
+  ,s.company_reg_no 
+  ,s.credit_limit
+  ,s.remarks
+  ,s.creation_date
+  ,s.modification_date
+  ,s.created_by
+  ,s.modified_by
   ,gc.name AS country_name 
   ,p.payment_status
   FROM supplier s LEFT JOIN (geo_country gc) ON (s.address_country = gc.country_code)
@@ -91,7 +114,6 @@ app.post('/get-SupplierById', (req, res, next) => {
   }
 );
 });
-
 
 app.put('/updateSupplierPaymentsAndPurchaseOrder', (req, res) => {
   // const supplier_receipt_id = req.body.supplier_receipt_id;
@@ -154,6 +176,23 @@ app.post('/edit-Supplier', (req, res, next) => {
             ,address_po_code=${db.escape(req.body.address_po_code)}
             ,payment_details=${db.escape(req.body.payment_details)}
             ,terms=${db.escape(req.body.terms)}
+            ,price_group=${db.escape(req.body.price_group)}
+            ,tax=${db.escape(req.body.tax)}
+            ,contact_type=${db.escape(req.body.contact_type)}
+            ,currency=${db.escape(req.body.currency)}
+            ,remarks=${db.escape(req.body.remarks)}
+            ,area=${db.escape(req.body.area)}
+            ,credit_limit=${db.escape(req.body.credit_limit)}
+            ,cheque_print_name=${db.escape(req.body.cheque_print_name)}
+            ,company_reg_no=${db.escape(req.body.company_reg_no)}
+            ,is_active=${db.escape(req.body.is_active)}
+            ,website=${db.escape(req.body.website)}
+            ,hand_phone_no=${db.escape(req.body.hand_phone_no)}
+            ,user_name=${db.escape(req.body.user_name)}
+            ,password=${db.escape(req.body.password)}
+            ,phone=${db.escape(req.body.phone)}
+            ,modified_by=${db.escape(req.body.modified_by)}
+            ,modification_date=${db.escape(req.body.modification_date)}
             WHERE supplier_id =${db.escape(req.body.supplier_id)}`,
             (err, result) => {
               if (err) {
@@ -171,6 +210,31 @@ app.post('/edit-Supplier', (req, res, next) => {
             }
           );
         });
+        
+        
+        app.post('/activateSupplier', (req, res, next) => {
+  db.query(`UPDATE supplier 
+            SET status = 'Active'
+          
+          
+            WHERE supplier_id =${db.escape(req.body.supplier_id)}`,
+            (err, result) => {
+              if (err) {
+                console.log('error: ', err)
+                return res.status(400).send({
+                  data: err,
+                  msg: 'failed',
+                })
+              } else {
+                return res.status(200).send({
+                  data: result,
+                  msg: 'Success',
+          })
+        }
+            }
+          );
+        });
+
 
 
 app.post('/insert-Supplier', (req, res, next) => {
@@ -211,6 +275,8 @@ app.post('/insert-Supplier', (req, res, next) => {
               billing_address_po_code: req.body.billing_address_po_code,
               gst_no: req.body.gst_no,
               terms: req.body.terms,
+              supplier_code: req.body.supplier_code,
+              is_active:0,
               payment_details: req.body.payment_details};
   let sql = "INSERT INTO supplier SET ?";
   let query = db.query(sql, data, (err, result) => {
@@ -229,6 +295,7 @@ app.post('/insert-Supplier', (req, res, next) => {
   }
 );
 });
+
 
 app.post('/insert-SupplierReceipt', (req, res, next) => {
 
@@ -654,6 +721,325 @@ app.post('/getStatus', (req, res, next) => {
     }
   );
 });
+
+app.get('/getPriceGroupDrodownFromValuelist', (req, res, next) => {
+  db.query(
+    `SELECT 
+  value
+  ,valuelist_id
+  FROM valuelist WHERE key_text='Price Group'`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        })
+      }
+    },
+  )
+})
+
+app.get('/getContactTypeDrodownFromValuelist', (req, res, next) => {
+  db.query(
+    `SELECT 
+  value
+  ,valuelist_id
+  FROM valuelist WHERE key_text='Contact Type'`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        })
+      }
+    },
+  )
+})
+
+app.get('/getAreaDrodownFromValuelist', (req, res, next) => {
+  db.query(
+    `SELECT 
+  value
+  ,valuelist_id
+  FROM valuelist WHERE key_text='Area'`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        })
+      }
+    },
+  )
+})
+
+app.get('/getTermsDrodownFromValuelist', (req, res, next) => {
+  db.query(
+    `SELECT 
+  value
+  ,valuelist_id
+  FROM valuelist WHERE key_text='Supplier Terms'`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        })
+      }
+    },
+  )
+})
+
+app.get('/getCurrencyDrodownFromValuelist', (req, res, next) => {
+  db.query(
+    `SELECT 
+  value
+  ,valuelist_id
+  FROM valuelist WHERE key_text='Currency'`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        })
+      }
+    },
+  )
+})
+
+app.get('/getTaxDrodownFromValuelist', (req, res, next) => {
+  db.query(
+    `SELECT 
+  value
+  ,valuelist_id
+  FROM valuelist WHERE key_text='Tax'`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        })
+      }
+    },
+  )
+})
+
+app.post('/getContactBySupplierId', (req, res, next) => {
+  db.query(`SELECT * FROM contact
+  WHERE supplier_id=${db.escape(req.body.supplier_id)}`,
+  (err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+})
+}
+  }
+);
+});
+
+app.post('/getSupplierTransactionReport', (req, res, next) => {
+  const { supplier_id, fromDate, toDate } = req.body;
+
+  db.query(
+    `SELECT
+      p.tran_no,
+      p.tran_date,
+      p.sub_total,
+      p.net_total,
+      p.gst,
+      p.purchase_order_id,
+      p.purchase_order_date
+    FROM purchase_order p
+    WHERE p.supplier_id = ?
+      AND p.tran_date BETWEEN ? AND ?`,
+    [supplier_id, fromDate, toDate], 
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        });
+      }
+    }
+  );
+});
+
+app.post('/getGoodsReturnReport', (req, res, next) => {
+  const { supplier_id, fromDate, toDate } = req.body;
+
+  db.query(
+    `SELECT
+      g.tran_no,
+      g.tran_date,
+      g.sub_total,
+      g.net_total,
+      g.gst
+    FROM goods_return g
+    WHERE g.supplier_id = ?
+      AND g.tran_date BETWEEN ? AND ?`,
+    [supplier_id, fromDate, toDate], 
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        });
+      }
+    }
+  );
+});
+
+app.post('/getGoodsReceiptReport', (req, res, next) => {
+  const { supplier_id, fromDate, toDate } = req.body;
+
+  db.query(
+    `SELECT
+      g.tran_no,
+      g.tran_date,
+      g.sub_total,
+      g.net_total,
+      g.gst
+    FROM goods_receipt g
+    WHERE g.supplier_id = ?
+      AND g.tran_date BETWEEN ? AND ?`,
+    [supplier_id, fromDate, toDate], 
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        });
+      }
+    }
+  );
+});
+
+app.post('/getPurchaseInvoiceReport', (req, res, next) => {
+  const { supplier_id, fromDate, toDate } = req.body;
+
+  db.query(
+    `SELECT
+      pi.tran_no,
+      pi.tran_date,
+      pi.sub_total,
+      pi.net_total,
+      pi.gst
+    FROM purchase_invoice pi
+    WHERE pi.supplier_id = ?
+      AND pi.tran_date BETWEEN ? AND ?`,
+    [supplier_id, fromDate, toDate], 
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        });
+      }
+    }
+  );
+});
+
+app.post('/getPaymentsReport', (req, res, next) => {
+  const { supplier_id, fromDate, toDate } = req.body;
+
+  db.query(
+    `SELECT
+      p.payment_no,
+      p.payment_date,
+      p.pay_mode,
+      p.paid_amount,
+      p.gl_name,
+      p.credit_amount,
+      p.deposit_amount
+    FROM payments p
+    WHERE p.supplier_id = ?
+      AND p.payment_date BETWEEN ? AND ?`,
+    [supplier_id, fromDate, toDate], 
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err);
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+        });
+      }
+    }
+  );
+});
+
+
 app.get('/secret-route', userMiddleware.isLoggedIn, (req, res, next) => {
   console.log(req.userData);
   res.send('This is the secret content. Only logged in users can see that!');
