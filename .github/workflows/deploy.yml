@@ -31,6 +31,7 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
           source: "deploy/api-update.zip"
           target: "/www/wwwroot/66.29.149.122/amproAdminapi/"
 
@@ -40,6 +41,7 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
           script: |
             cd /www/wwwroot/66.29.149.122/amproAdminapi/
             
