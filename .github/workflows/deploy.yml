@@ -1,45 +1,49 @@
-name: Build and Deploy Static Website
+name: Auto Deploy Selected API Files to aaPanel
 
 on:
   push:
     branches:
       - main
- 
+
 jobs:
   deploy:
     if: ${{ github.actor == 'SyedJasmine1991' }}
     runs-on: ubuntu-latest
- 
+
     steps:
-      - name: 📦 Checkout Code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Use Node.js 16.18.0
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16.18.0
-
-      - name: Use Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: 🔧 Install Dependencies & Build
+      - name: Prepare Deploy Package (Only routes + App.js)
         run: |
-          npm install --force
-          npm run build
+          mkdir deploy
+          cp App.js deploy/
+          cp -r routes deploy/
 
-          # ✅ Move contents from build/ to project root
-          shopt -s dotglob
-          mv build/* . || true
-          mv build/.* . || true
-          rm -rf build
+          # Create archive
+          cd deploy
+          zip -r api-update.zip . 
+          cd ..
 
-      - name: 📤 Deploy to aaPanel (after move)
+      - name: Upload to aaPanel
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "*"
-          target: "/www/wwwroot/amproadmin.zaitunsoftsolutions.com/"
+          source: "deploy/api-update.zip"
+          target: "/www/wwwroot/66.29.149.122/amproAdminapi/"
+
+      - name: SSH → Deploy on Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /www/wwwroot/66.29.149.122/amproAdminapi/
+            
+            unzip -o api-update.zip
+            rm api-update.zip
+
+            pm2 restart amproAdminapi
