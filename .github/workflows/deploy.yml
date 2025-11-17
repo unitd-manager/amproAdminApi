@@ -32,25 +32,28 @@ jobs:
 
       # SSH into server to extract + restart PM2
       - name: Deploy on Server
-  uses: appleboy/ssh-action@v1.0.0
-  with:
-    host: ${{ secrets.SERVER_IP }}
-    username: ${{ secrets.SERVER_USER }}
-    key: ${{ secrets.SERVER_SSH_KEY }}
-    port: 22
-    script: |
-      cd /www/wwwroot/66.29.149.122/amproAdminapi/
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            cd /www/wwwroot/66.29.149.122/amproAdminapi/
 
-      echo "Unzipping update..."
-      unzip -o api-update.zip
+            echo "Unzipping update..."
+            unzip -o api-update.zip
 
-      echo "Cleaning ZIP..."
-      rm -f api-update.zip
+            echo "Cleaning ZIP..."
+            rm -f api-update.zip
 
-      echo "Setting NODE and PM2 paths..."
-      export NODE_PATH=/www/server/nvm/versions/node/v22.16.0/bin
-      export PATH=$NODE_PATH:$PATH
+            echo "Setting NODE and PM2 paths..."
+            export NODE_PATH=/www/server/nvm/versions/node/v22.16.0/bin
+            export PATH=$NODE_PATH:$PATH
 
-      echo "Restarting PM2 with absolute Node path..."
-      /www/server/nvm/versions/node/v22.16.0/bin/pm2 restart amproAdminapi --interpreter /www/server/nvm/versions/node/v22.16.0/bin/node || \
-      /www/server/nvm/versions/node/v22.16.0/bin/pm2 start App.js --name amproAdminapi --interpreter /www/server/nvm/versions/node/v22.16.0/bin/node
+            echo "Restarting PM2 with absolute Node path..."
+            /www/server/nvm/versions/node/v22.16.0/bin/pm2 restart amproAdminapi --interpreter /www/server/nvm/versions/node/v22.16.0/bin/node || \
+            /www/server/nvm/versions/node/v22.16.0/bin/pm2 start App.js --name amproAdminapi --interpreter /www/server/nvm/versions/node/v22.16.0/bin/node
+
+
+
