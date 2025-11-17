@@ -18,7 +18,7 @@ app.use(
     createParentPath: true,
   })
 );
-app.get('/getTrack1234', (req, res, next) => {
+app.get('/getTrack1234s', (req, res, next) => {
     db.query(`SELECT e.*
         ,en.first_name AS shipment
     FROM customer_address e
