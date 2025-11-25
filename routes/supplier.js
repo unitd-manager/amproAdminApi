@@ -17,7 +17,7 @@ app.use(fileUpload({
     createParentPath: true
 }));
 
-app.get('/supplier/getSupplier', (req, res) => {
+app.get('/getSupplier', (req, res) => {
   const { supplier_name, mobile, is_active } = req.query;
 
   let query = `
@@ -31,6 +31,8 @@ app.get('/supplier/getSupplier', (req, res) => {
       s.gst_no,
       s.contact_person,
       s.address_flat,
+      s.address1,
+      s.address2,
       s.address_street,
       s.address_state,
       s.address_country,
