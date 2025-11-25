@@ -34,6 +34,7 @@ app.get('/getSupplier', (req, res, next) => {
   ,s.address_po_code
   ,s.payment_details
   ,s.terms
+  ,s.is_active
   ,s.phone
   ,s.supplier_code
   ,gc.name AS country_name 
