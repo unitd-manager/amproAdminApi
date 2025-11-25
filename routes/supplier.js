@@ -17,45 +17,92 @@ app.use(fileUpload({
     createParentPath: true
 }));
 
-app.get('/getSupplier', (req, res, next) => {
-  db.query(`SELECT s.company_name  AS supplier_name
-  ,s.supplier_id
-  ,s.email
-  ,s.fax
-  ,s.supplier_id
-  ,s.mobile
-  ,s.status
-  ,s.gst_no
-  ,s.contact_person
-  ,s.address_flat
-  ,s.address_street
-  ,s.address_state
-  ,s.address_country
-  ,s.address_po_code
-  ,s.payment_details
-  ,s.terms
-  ,s.is_active
-  ,s.phone
-  ,s.supplier_code
-  ,gc.name AS country_name 
-  FROM supplier s LEFT JOIN (geo_country gc) ON (s.address_country = gc.country_code) WHERE s.supplier_id != ''
-  ORDER By s.supplier_id DESC`,
-  (err, result) => {
-    if (err) {
-      console.log('error: ', err)
-      return res.status(400).send({
-        data: err,
-        msg: 'failed',
-      })
-    } else {
-      return res.status(200).send({
-        data: result,
-        msg: 'Success',
-})
-}
+app.get('/supplier/getSupplier', (req, res) => {
+  const { supplier_name, mobile, is_active } = req.query;
+
+  let query = `
+    SELECT 
+      s.company_name AS supplier_name,
+      s.supplier_id,
+      s.email,
+      s.fax,
+      s.mobile,
+      s.status,
+      s.gst_no,
+      s.contact_person,
+      s.address_flat,
+      s.address_street,
+      s.address_state,
+      s.address_country,
+      s.address_po_code,
+      s.payment_details,
+      s.terms,
+      s.is_active,
+      s.phone,
+      s.supplier_code,
+      gc.name AS country_name,
+      CASE 
+        WHEN s.is_active = 1 THEN 'Active'
+        ELSE 'Inactive'
+      END AS status_display
+    FROM supplier s
+    LEFT JOIN geo_country gc ON s.address_country = gc.country_code
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  // 🔍 Supplier Name Search
+  if (supplier_name) {
+    query += ' AND (s.company_name LIKE ? OR s.contact_person LIKE ? OR s.supplier_code LIKE ?)';
+    params.push(`%${supplier_name}%`, `%${supplier_name}%`, `%${supplier_name}%`);
   }
-);
+
+  // 📞 Mobile Number Search
+  if (mobile) {
+    query += ' AND s.mobile LIKE ?';
+    params.push(`%${mobile}%`);
+  }
+
+  // ⚙️ Status Filter (active/inactive)
+  if (is_active !== undefined && is_active !== '') {
+    const active = parseInt(is_active, 10);
+    if (active === 1) {
+      query += ' AND s.is_active = 1';
+    } else if (active === 0) {
+      query += ' AND (s.is_active = 0 OR s.is_active IS NULL)';
+    }
+  }
+
+  query += ' ORDER BY s.supplier_id DESC';
+
+  // 🧠 Execute Query
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error('Error fetching suppliers:', err);
+      return res.status(500).send({
+        msg: 'Error fetching supplier data',
+        data: err,
+        query,
+        params,
+      });
+    }
+
+    // 🧩 Process Results
+    const processedResults = result.map((supplier) => ({
+      ...supplier,
+      status_display: supplier.is_active === 1 ? 'Active' : 'Inactive',
+    }));
+
+    return res.status(200).send({
+      msg: 'Success',
+      data: processedResults,
+      total_count: processedResults.length,
+      filtered_count: processedResults.length,
+    });
+  });
 });
+
 
 
 app.post('/get-SupplierById', (req, res, next) => {
