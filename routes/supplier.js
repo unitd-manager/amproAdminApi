@@ -67,6 +67,8 @@ app.post('/get-SupplierById', (req, res, next) => {
   ,s.gst_no
   ,s.contact_person
   ,s.address_flat
+  ,s.address1
+  ,s.address2
   ,s.address_street
   ,s.address_state
   ,s.address_country
@@ -79,6 +81,7 @@ app.post('/get-SupplierById', (req, res, next) => {
   ,s.password
   ,s.price_group
   ,s.tax
+  ,s.tax_type
   ,s.contact_type
   ,s.currency
   ,s.area
@@ -170,6 +173,8 @@ app.post('/edit-Supplier', (req, res, next) => {
             ,gst_no=${db.escape(req.body.gst_no)}
             ,contact_person=${db.escape(req.body.contact_person)}
             ,address_flat=${db.escape(req.body.address_flat)}
+             ,address1=${db.escape(req.body.address1)}
+              ,address2=${db.escape(req.body.address2)}
             ,address_street=${db.escape(req.body.address_street)}
             ,address_state=${db.escape(req.body.address_state)}
             ,address_country=${db.escape(req.body.address_country)}
@@ -180,7 +185,9 @@ app.post('/edit-Supplier', (req, res, next) => {
             ,tax=${db.escape(req.body.tax)}
             ,contact_type=${db.escape(req.body.contact_type)}
             ,currency=${db.escape(req.body.currency)}
-            ,remarks=${db.escape(req.body.remarks)}
+               ,tax_type=${db.escape(req.body.tax_type)}
+             ,price_group=${db.escape(req.body.price_group)}
+             ,remarks=${db.escape(req.body.remarks)}
             ,area=${db.escape(req.body.area)}
             ,credit_limit=${db.escape(req.body.credit_limit)}
             ,cheque_print_name=${db.escape(req.body.cheque_print_name)}
@@ -242,6 +249,9 @@ app.post('/insert-Supplier', (req, res, next) => {
   let data = {company_name: req.body.company_name,
               email: req.body.email,
               address_street: req.body.address_street,
+              address1: req.body.address1,
+              address2: req.body.address2,
+              tax_type: req.body.tax_type,
               address_town: req.body.address_town,
               address_state: req.body.address_state,
               address_country: req.body.address_country,
