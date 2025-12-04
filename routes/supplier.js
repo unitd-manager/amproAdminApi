@@ -17,6 +17,71 @@ app.use(fileUpload({
     createParentPath: true
 }));
 
+
+app.get('/getSupplierss', (req, res) => {
+  const { company_name, mobile, is_active } = req.query;
+
+  let query = `
+    SELECT
+      c.*,
+      CASE 
+        WHEN c.is_active = 1 THEN 'Active'
+        ELSE 'Inactive'
+      END AS status_display
+    FROM supplier c
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (company_name) {
+    query += ' AND (c.company_name LIKE ? OR c.first_name LIKE ?)';
+    params.push(`%${company_name}%`, `%${company_name}%`);
+  }
+
+  if (mobile) {
+    query += ' AND c.mobile LIKE ?';
+    params.push(`%${mobile}%`);
+  }
+
+  if (is_active !== undefined && is_active !== '') {
+    const active = parseInt(is_active, 10);
+    if (active === 1) {
+      query += ' AND c.is_active = 1';
+    } else if (active === 0) {
+      query += ' AND (c.is_active = 0 OR c.is_active IS NULL)';
+    }
+  }
+
+  query += ' ORDER BY c.company_id DESC';
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error('Error fetching contacts:', err);
+      return res.status(500).send({
+        msg: 'Error fetching contacts',
+        data: err,
+        query,
+        params
+      });
+    }
+
+    const processedResults = result.map(contact => ({
+      ...contact,
+      status_display: contact.is_active === 1 ? 'Active' : 'Inactive'
+    }));
+
+    res.status(200).send({
+      msg: 'Success',
+      data: processedResults,
+      total_count: processedResults.length,
+      filtered_count: processedResults.length
+    });
+  });
+});
+
+
+
 app.get('/getSupplier', (req, res) => {
   const { supplier_name, mobile, is_active } = req.query;
 
@@ -105,6 +170,176 @@ app.get('/getSupplier', (req, res) => {
   });
 });
 
+
+app.post('/getSupplierssById', (req, res, next) => {
+  db.query(`select c.*
+  from supplier c
+  where c.supplier_id =${db.escape(req.body.supplier_id)}`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+
+        }
+ 
+    }
+  );
+});
+
+
+
+app.post('/editSuppliers', (req, res, next) => {
+  db.query(`UPDATE supplier
+            SET company_name=${db.escape(req.body.company_name)}
+            ,position=${db.escape(req.body.position)}
+            ,email=${db.escape(req.body.email)}
+            ,address2=${db.escape(req.body.address2)}
+            ,address_street=${db.escape(req.body.address_street)}
+            ,address_area=${db.escape(req.body.address_area)}
+            ,address_state=${db.escape(req.body.address_state)}
+            ,address_country=${db.escape(req.body.address_country)}
+            ,address_po_code=${db.escape(req.body.address_po_code)}
+            ,phone=${db.escape(req.body.phone)}
+            ,notes=${db.escape(req.body.notes)}
+            ,published=${db.escape(req.body.published)}
+            ,creation_date=${db.escape(req.body.creation_date)}
+            ,modification_date=${db.escape(req.body.modification_date)}
+            ,modified_by=${db.escape(req.body.modified_by)}
+            ,pass_word=${db.escape(req.body.pass_word)}
+            ,subscribe=${db.escape(req.body.subscribe)}
+            ,first_name=${db.escape(req.body.first_name)}
+            ,last_name=${db.escape(req.body.last_name)}
+            ,mobile=${db.escape(req.body.mobile)}
+            ,address=${db.escape(req.body.address)}
+            ,flag=${db.escape(req.body.flag)}
+            ,random_no=${db.escape(req.body.random_no)}
+            ,member_status=${db.escape(req.body.member_status)}
+            ,member_type=${db.escape(req.body.member_type)}
+            ,address1=${db.escape(req.body.address1)}
+            ,phone_direct=${db.escape(req.body.phone_direct)}
+            ,fax=${db.escape(req.body.fax)}
+            ,terms=${db.escape(req.body.terms)}
+            ,fax_no=${db.escape(req.body.fax_no)}
+            ,credit_limit=${db.escape(req.body.credit_limit)}
+             ,web_site=${db.escape(req.body.web_site)}
+              ,company_reg_no=${db.escape(req.body.company_reg_no)}
+               ,cheque_print_name=${db.escape(req.body.cheque_print_name)}
+                        ,currency=${db.escape(req.body.currency)}
+                                    ,hand_phone_no=${db.escape(req.body.hand_phone_no)}
+            ,area=${db.escape(req.body.area)}
+            ,country_postal=${db.escape(req.body.country_postal)}
+            ,contact_type=${db.escape(req.body.contact_type)}
+             ,tax_type=${db.escape(req.body.tax_type)}
+             ,price_group=${db.escape(req.body.price_group)}
+             ,remarks=${db.escape(req.body.remarks)}
+            ,activated=${db.escape(req.body.activated)}
+            ,address_city=${db.escape(req.body.address_city)}
+            ,department=${db.escape(req.body.department)}
+             ,hand_phone_no=${db.escape(req.body.hand_phone_no)}
+            ,is_active=${db.escape(req.body.is_active)}
+            WHERE supplier_id=${db.escape(req.body.supplier_id)}`,
+    (err, result) => {
+     
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+     }
+  );
+});
+
+
+app.post('/insertCompanySupplier', (req, res, next) => {
+  let data = {
+   company_name: req.body.company_name,
+              email: req.body.email,
+              address_street: req.body.address_street,
+              address1: req.body.address1,
+              address2: req.body.address2,
+              tax_type: req.body.tax_type,
+              address_town: req.body.address_town,
+              address_state: req.body.address_state,
+              address_country: req.body.address_country,
+              address_po_code: req.body.address_po_code,
+              phone: req.body.phone,
+              fax: req.body.fax,
+              notes: req.body.notes,
+              creation_date: req.body.creation_date,
+              modification_date: req.body.modification_date,
+              mobile: req.body.mobile,
+              flag: req.body.flag,
+              address_flat: req.body.address_flat,
+              status: req.body.status,
+              website: req.body.website,
+              category: req.body.category,
+              comment_by: req.body.comment_by,
+              company_size: req.body.company_size,
+              industry: req.body.industry,
+              source: req.body.source,
+              group_name: req.body.group_name,
+              supplier_type: req.body.supplier_type,
+              created_by: req.body.created_by,
+              modified_by: req.body.modified_by,
+              chi_company_name: req.body.chi_company_name,
+              chi_company_address: req.body.chi_company_address,
+              company_address_id: req.body.company_address_id,
+              contact_person: req.body.contact_person,
+              billing_address_flat: req.body.billing_address_flat,
+              billing_address_street: req.body.billing_address_street,
+              billing_address_country: req.body.billing_address_country,
+              billing_address_po_code: req.body.billing_address_po_code,
+              terms: req.body.terms,
+              supplier_code: req.body.supplier_code,
+              is_active:req.body.is_active,
+              payment_details: req.body.payment_details
+  };
+
+  let sql = "INSERT INTO supplier SET ?";
+  db.query(sql, data, async (err, result) => {
+    if (err) {
+      console.log("❌ DB error:", err);
+      return res.status(500).send({ error: err });
+    } else {
+      // ✅ Call n8n webhook with required fields
+      try {
+        await axios.post(
+          process.env.N8N_ENQUIRY_WEBHOOK_URL,
+          {
+            email: req.body.email,
+            company_name: req.body.company_name
+          },
+          {
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+        console.log("✅ Synced to n8n webhook");
+      } catch (e) {
+        console.error("❌ Failed to sync to n8n webhook:", e.message);
+      }
+
+      return res.status(200).send({
+        data: result,
+        msg: 'New Company has been created successfully'
+      });
+    }
+  });
+});
 
 
 app.post('/get-SupplierById', (req, res, next) => {
