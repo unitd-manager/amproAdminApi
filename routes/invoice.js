@@ -264,7 +264,8 @@ app.post('/getSalesorderById', (req, res, next) => {
     cd.billing_address_state,
     cd.billing_address_country,
     cd.billing_address_po_code,
-    
+    sp.salesman_name,
+    sp.salesman_phone,
     c.notes,
     cu.currency_id,
     cu.currency_code,
@@ -276,6 +277,7 @@ app.post('/getSalesorderById', (req, res, next) => {
       LEFT JOIN company cd ON (cd.company_id = s.delivery_id)
 
        LEFT JOIN contact co ON (co.company_id = c.company_id)
+        LEFT JOIN sales_person sp ON (sp.sales_id = s.sales_id)
   LEFT JOIN currency cu ON (cu.currency_id = s.currency_id)
   Where s.invoice_id=${db.escape(req.body.invoice_id)}`,
   (err, result) => {

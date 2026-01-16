@@ -307,7 +307,7 @@ app.post('/insertCompanySupplier', (req, res, next) => {
               terms: req.body.terms,
               supplier_code: req.body.supplier_code,
               is_active:req.body.is_active,
-              payment_details: req.body.payment_details
+           
   };
 
   let sql = "INSERT INTO supplier SET ?";
