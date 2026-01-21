@@ -632,20 +632,18 @@ app.post('/insertDeliveryVerify', (req, res, next) => {
 });
 
      
-  
 app.post('/insertSalesOrder', (req, res, next) => {
-
   let data = {	
      creation_date: new Date().toISOString()
     , modification_date: null
     , company_id: req.body.company_id
-    , currency_id	: req.body.currency_id
+    , currency_id: req.body.currency_id
     , tran_no: req.body.tran_no
     , status: req.body.status
     , tran_date: req.body.tran_date
     , created_by: req.body.created_by
-
- };
+  };
+  
   let sql = "INSERT INTO sales_order SET ?";
   let query = db.query(sql, data, (err, result) => {
     if (err) {
@@ -656,14 +654,14 @@ app.post('/insertSalesOrder', (req, res, next) => {
       });
     } else {
       return res.status(200).send({
-        data: result,
+        data: {
+          insertId: result.insertId  // Make sure insertId is nested inside data
+        },
         msg: 'Success',
-})
-}
-  }
-);
+      });
+    }
+  });
 });
-
 
 //  app.post('/getQuoteLineItemsById', (req, res, next) => {
 //     db.query(`SELECT

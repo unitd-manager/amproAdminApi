@@ -17,6 +17,108 @@ app.use(fileUpload({
     createParentPath: true
 }));
 
+
+app.get('/getSalesMan', (req, res) => {
+  db.query(
+    `SELECT DISTINCT c.sales_id AS sales_id_dup
+    ,c.salesman_name
+    ,c.salesman_phone
+    ,c.email
+    FROM sales_person c
+    WHERE c.sales_id != ''
+ORDER BY c.salesman_name ASC`, 
+    (err, results) => {
+      if (err) {
+        console.error("Error: ", err);
+        return res.status(500).send({ msg: 'Database query error', error: err });
+      }
+      if (!results.length) {
+        return res.status(404).send({ msg: 'No companies found' });
+      }
+      return res.status(200).send({ data: results, msg: 'Success' });
+    }
+  );
+});
+
+
+app.post('/addSalesOrderSalesman', (req, res, next) => {
+
+  let data = {
+      salesman_name: req.body.salesman_name,
+  sales_order_id: req.body.sales_order_id, 
+    sales_id: req.body.sales_id
+      
+  };
+  let sql = "INSERT INTO sales_person_order SET ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      result(err, null);
+      return;
+    } else {
+          return res.status(200).send({
+            data: result,
+            msg:'New Company has been created successfully'
+          });
+    }
+  });
+});
+
+app.post('/getSalesOrderSalesmen', (req, res, next) => {
+  db.query(`SELECT DISTINCT a.sales_person_order_id
+  ,a.sales_id
+  ,a.salesman_name
+  ,a.sales_order_id
+ 
+FROM sales_person_order a
+WHERE a.sales_order_id = ${db.escape(req.body.sales_order_id)}
+ORDER BY a.salesman_name ASC`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+    }
+  );
+});
+
+app.post('/removeSalesOrderSalesman', (req, res, next) => {
+  const { sales_id, sales_order_id } = req.body;
+  
+  // Validate inputs
+  if (!sales_id || !sales_order_id) {
+    return res.status(400).send({
+      data: null,
+      msg: 'sales_id and sales_order_id are required',
+    });
+  }
+
+  let sql = "DELETE FROM sales_person_order WHERE `sales_id` = ? AND `sales_order_id` = ?";
+  let query = db.query(sql, [sales_id, sales_order_id], (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+      });
+    }
+  });
+});
+
+
 app.get('/getEmployee', (req, res, next) => {
   db.query(`SELECT DISTINCT a.employee_id AS employee_id_duplicate
   ,a.emp_code
