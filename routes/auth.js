@@ -82,7 +82,27 @@ app.get('/geofence', async (req, res) => {
 
 
 app.get('/getSettingsForGoogleMap', (req, res, next) => {
-  db.query(`SELECT * FROM setting WHERE key_text="cp.latitude"`,
+  db.query(`SELECT key_text, value FROM setting WHERE key_text="cp.latitude"`,
+  (err, result) => {
+    if (err) {
+      console.log('error: ', err)
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      })
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+})
+}
+  }
+);
+});
+
+
+app.get('/getSettingsForGeofence', (req, res, next) => {
+  db.query(`SELECT key_text, value FROM setting WHERE key_text="cp.geofence"`,
   (err, result) => {
     if (err) {
       console.log('error: ', err)
