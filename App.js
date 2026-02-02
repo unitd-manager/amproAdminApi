@@ -78,6 +78,7 @@ const content = require('./routes/content.js');
 const setting = require('./routes/setting.js');
 const valuelist = require('./routes/valuelist.js');
 const subcategory = require('./routes/subcategory.js');
+const subcategorycli = require('./routes/subcategorycli.js');
 const category = require('./routes/category.js');
 const media = require('./routes/media.js');
 const section = require('./routes/section.js');
@@ -118,9 +119,17 @@ const salesreturn = require('./routes/salesreturn.js');
 const stockRequest = require('./routes/stockRequest.js');
 const payments = require('./routes/payments.js');
 const receipt = require('./routes/receipt.js');
+const departmentcli = require('./routes/departmentcli.js');
+const categorycli = require('./routes/categorycli.js');
+const brandcli = require('./routes/brandcli.js');
+const bincli = require('./routes/bincli.js');
+const customersupplierprice = require('./routes/customersupplierprice.js');
 
-
-
+app.use('/customersupplierprice', customersupplierprice);
+app.use('/bincli', bincli);
+app.use('/brandcli', brandcli);
+app.use('/categorycli', categorycli);
+app.use('/departmentcli', departmentcli);
 app.use('/payments', payments);
 app.use('/salesreturn', salesreturn);
 app.use('/Transaction', transaction);
@@ -135,6 +144,7 @@ app.use('/category', category);
 app.use('/setting', setting);
 app.use('/valuelist', valuelist);
 app.use('/subcategory', subcategory);
+app.use('/subcategorycli', subcategorycli);
 app.use('/content', content);
 app.use('/media', media);
 app.use('/section', section);
