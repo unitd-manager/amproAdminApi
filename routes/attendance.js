@@ -59,6 +59,73 @@ app.get("/getAttendance", (req, res, next) => {
   );
 });
 
+app.post('/getAttendanceDataById', (req, res, next) => {
+  db.query(`SELECT sa.id  
+  ,sa.staff_id
+  ,sa.date
+  ,sa.day_check_in_time
+  ,sa.day_check_out_time
+  ,sa.night_check_In_time
+  ,sa.night_check_out_time
+  ,sa.day_checkIn_latitude
+  ,sa.day_checkIn_longitude
+  ,sa.day_checkOut_latitude
+  ,sa.day_checkOut_longitude
+  ,sa.night_checkIn_latitude
+  ,sa.night_checkIn_longitude
+  ,sa.night_checkOut_latitude
+  ,sa.night_checkOut_longitude
+  ,p.title,
+  s.first_name
+  FROM smart_attendance sa
+  LEFT JOIN project p ON (p.project_id = sa.project_id)
+  LEFT JOIN staff s ON (s.staff_id = sa.staff_id)
+  WHERE sa.id=${db.escape(req.body.id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({
+          msg: 'No result found'
+        });
+      }else {
+            return res.status(200).send({
+              data: result[0],
+              msg:'Success'
+            });
+        }
+ 
+    }
+  );
+});
+
+
+app.get("/getAllEmployeeData", (req, res, next) => {
+  db.query(
+    `SELECT sa.id  
+  ,sa.staff_id
+  ,sa.date
+  ,sa.day_check_in_time
+  ,sa.day_check_out_time
+  ,sa.night_check_In_time
+  ,sa.night_check_out_time
+  ,s.first_name
+  FROM smart_attendance sa
+  LEFT JOIN staff s ON (s.staff_id = sa.staff_id)
+  WHERE s.first_name !=''
+  ORDER BY sa.id DESC`,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return;
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
 app.get('/getProjects', (req, res, next) => {
   db.query(`SELECT p.title
   ,p.project_id
