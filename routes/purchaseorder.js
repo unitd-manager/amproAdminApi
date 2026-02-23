@@ -192,12 +192,17 @@ app.post('/editPurchaseOrder', (req, res, next) => {
             ,contact_address2=${db.escape(req.body.contact_address2)}
             ,contact_address3=${db.escape(req.body.contact_address3)}
              ,country=${db.escape(req.body.country)}
+             ,supplier_id=${db.escape(req.body.supplier_id)}
+              ,currency_id=${db.escape(req.body.currency_id)}
+              ,currency_name=${db.escape(req.body.currency_name)}
+              ,currency_rate=${db.escape(req.body.currency_rate)}
             ,postal_code=${db.escape(req.body.postal_code)}
             ,remarks=${db.escape(req.body.remarks)}
             ,req_delivery_date=${db.escape(req.body.req_delivery_date)}
             ,sub_total=${db.escape(req.body.sub_total)}
             ,tax_amount=${db.escape(req.body.tax_amount)}
             ,net_total=${db.escape(req.body.net_total)}
+              ,bill_discount=${db.escape(req.body.bill_discount)}
             WHERE purchase_order_id = ${db.escape(req.body.purchase_order_id)}`,
             (err, result) => {
               if (err) {
@@ -271,7 +276,9 @@ app.post('/insertPurchaseOrder', (req, res, next) => {
     yr_quote_date: req.body.yr_quote_date,
     purchase_item: req.body.purchase_item,
     currency: req.body.currency,
-    terms_purchase: req.body.terms_purchase
+    terms_purchase: req.body.terms_purchase,
+    bill_discount: req.body.bill_discount,
+    
   };
 
   let sql = "INSERT INTO purchase_order SET ?";
@@ -383,7 +390,10 @@ app.post('/TabPurchaseOrderLineItemById', (req, res, next) => {
       po.carton_price,
       po.gross_total,
       po.discount,
-      po.total
+      po.total,
+      po.foc_qty,
+      po.discount_percentage,
+      po.discount_amount
 
     FROM po_product po
     LEFT JOIN product p ON po.product_id = p.product_id 
@@ -487,6 +497,7 @@ app.post('/insertPoProduct', (req, res, next) => {
     , selling_price: req.body.selling_price
     , qty_updated: req.body.qty_updated
     , qty: req.body.qty
+        ,foc_qty: req.body.foc_qty
     , product_id: req.body.product_id
     , supplier_id: req.body.supplier_id
     , gst:req.body.gst
@@ -500,7 +511,9 @@ app.post('/insertPoProduct', (req, res, next) => {
     carton_price: req.body.carton_price ?? 0,
     gross_total: req.body.gross_total ?? 0,
     discount: req.body.discount ?? 0,
-    total: req.body.total ?? 0
+    total: req.body.total ?? 0,
+    discount_percentage: req.body.discount_percentage ?? 0,
+    discount_amount: req.body.discount_amount ?? 0,
     
  };
  console.log(data)
@@ -1129,6 +1142,7 @@ WHERE po.purchase_order_id = ${db.escape(req.body.purchase_order_id)}`,
     selling_price: req.body.selling_price,
     qty_updated: req.body.qty_updated,
     qty: req.body.qty,
+     foc_qty: req.body.foc_qty,
     product_id: req.body.product_id,
     supplier_id: req.body.supplier_id,
     gst: req.body.gst,
@@ -1142,7 +1156,9 @@ WHERE po.purchase_order_id = ${db.escape(req.body.purchase_order_id)}`,
     carton_price: req.body.carton_price,
     gross_total: req.body.gross_total,
     discount: req.body.discount,
-    total: req.body.total
+    total: req.body.total,
+      discount_percentage: req.body.discount_percentage ?? 0,
+    discount_amount: req.body.discount_amount ?? 0,
   };
 
   const sql = "UPDATE po_product SET ? WHERE po_product_id = ?";
@@ -1532,6 +1548,10 @@ app.post('/insertGoodsReceipt', (req, res, next) => {
     purchase_order_id: req.body.purchase_order_id,
     po_code: req.body.po_code,
     site_id: req.body.site_id,
+     currency_id: req.body.currency_id,
+     currency_code: req.body.currency_code,
+     currency_rate: req.body.currency_rate,
+     currency_name: req.body.currency_name,
     supplier_id: req.body.supplier_id,
     contact_id_supplier: req.body.contact_id_supplier,
     delivery_terms: req.body.delivery_terms,
@@ -1582,7 +1602,8 @@ app.post('/insertGoodsReceipt', (req, res, next) => {
     invoice_no: req.body.invoice_no,
     do_no: req.body.do_no,
     sub_total: req.body.sub_total,
-    net_total: req.body.net_total
+    net_total: req.body.net_total,
+    bill_discount: req.body.bill_discount,
   };
 
   db.query('INSERT INTO goods_receipt SET ?', data, (err, result) => {
@@ -2205,6 +2226,7 @@ app.post('/deletePurchaseDebitNote', (req, res, next) => {
     gst: req.body.gst,
     damage_qty: req.body.damage_qty,
     brand: req.body.brand,
+           foc_qty: req.body.foc_qty,
     qty_requested: req.body.qty_requested,
     qty_delivered: req.body.qty_delivered,
     price: req.body.price,
@@ -2213,7 +2235,9 @@ app.post('/deletePurchaseDebitNote', (req, res, next) => {
     carton_price: req.body.carton_price,
     gross_total: req.body.gross_total,
     discount: req.body.discount,
-    total: req.body.total
+    total: req.body.total,
+     discount_percentage: req.body.discount_percentage ?? 0,
+    discount_amount: req.body.discount_amount ?? 0,
   };
 
   db.query('INSERT INTO gr_product SET ?', data, (err, result) => {
@@ -2431,11 +2455,14 @@ app.post('/deleteGrProduct', (req, res, next) => {
     qty_delivered: req.body.qty_delivered,
     price: req.body.price,
     carton_qty: req.body.carton_qty,
+       foc_qty: req.body.foc_qty,
     loose_qty: req.body.loose_qty,
     carton_price: req.body.carton_price,
     gross_total: req.body.gross_total,
     discount: req.body.discount,
-    total: req.body.total
+    total: req.body.total,
+     discount_percentage: req.body.discount_percentage ?? 0,
+    discount_amount: req.body.discount_amount ?? 0,
   };
 
   db.query('INSERT INTO goods_return_product SET ?', data, (err, result) => {
@@ -4011,7 +4038,7 @@ app.post('/repeatPurchaseOrder', (req, res, next) => {
                     delivery_to, contact, mobile, payment, project, tran_no, tran_date, contact_address1, 
                     contact_address2, contact_address3, country, remarks, req_delivery_date, 
                     contact_person, supplier_code, postal_code, sub_total, net_total, 
-                    yr_quote_date, purchase_item, currency, terms_purchase
+                    yr_quote_date, purchase_item, currency, terms_purchase,bill_discount,tax_amount
                 )
                 SELECT 
                     po_code, site_id, supplier_id, contact_id_supplier, delivery_terms, 'Repeated' AS status, project_id,
@@ -4023,7 +4050,7 @@ app.post('/repeatPurchaseOrder', (req, res, next) => {
                     delivery_to, contact, mobile, payment, project, tran_no, tran_date, contact_address1, 
                     contact_address2, contact_address3, country, remarks, req_delivery_date, 
                     contact_person, supplier_code, postal_code, sub_total, net_total, 
-                    yr_quote_date, purchase_item, currency, terms_purchase
+                    yr_quote_date, purchase_item, currency, terms_purchase,bill_discount,tax_amount
                 FROM purchase_order
                 WHERE purchase_order_id = ?
             `;
@@ -4060,9 +4087,9 @@ app.post('/repeatPurchaseOrder', (req, res, next) => {
                                   (purchase_order_id, item_title, quantity, unit, amount, description,
                                    creation_date, modification_date, created_by, modified_by, status,
                                    cost_price, selling_price, qty_updated, qty, product_id, supplier_id,
-                                   gst, damage_qty, brand, qty_requested, qty_delivered, price,
+                                   gst, damage_qty, brand, qty_requested, qty_delivered, price,discount_amount,discount_percentage,foc_qty,
                                    carton_qty, loose_qty, carton_price, gross_total, discount, total)
-                                VALUES (?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                VALUES (?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                             `;
 
                             const productValues = [
@@ -4154,7 +4181,7 @@ app.post('/ConvertToGra', (req, res, next) => {
                     supplier_inv_code, gst, gst_percentage, delivery_to, contact, mobile, 
                     payment, project, tran_no, tran_date, contact_address1, 
                     contact_address2, contact_address3, country, remarks, req_delivery_date, 
-                    contact_person, postal_code, sub_total, net_total
+                    contact_person, postal_code, sub_total, net_total,bill_discount
                 )
                 SELECT
                     purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier,
@@ -4167,7 +4194,7 @@ app.post('/ConvertToGra', (req, res, next) => {
                     supplier_inv_code, gst, gst_percentage, delivery_to, contact, mobile,
                     payment, project, tran_no, tran_date, contact_address1,
                     contact_address2, contact_address3, country, remarks, req_delivery_date,
-                    contact_person, postal_code, sub_total, net_total
+                    contact_person, postal_code, sub_total, net_total,bill_discount
                 FROM purchase_order
                 WHERE purchase_order_id = ?
             `;
@@ -4205,8 +4232,8 @@ app.post('/ConvertToGra', (req, res, next) => {
                                    creation_date, modification_date, status, cost_price,
                                    selling_price, qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand,
                                    qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total,
-                                   discount, total)
-                                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                   discount, total,foc_qty,discount_percentage,discount_amount)
+                                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                             `;
 
                             const productValues = [
@@ -4261,33 +4288,38 @@ app.post('/ConvertToGra', (req, res, next) => {
     });
 });
 
-router.post('/changeStatus', async (req, res) => {
-  try {
-    const { purchase_order_ids, status } = req.body;
+app.post('/changeStatus', (req, res) => {
+  const { purchase_order_ids, status } = req.body;
 
-    if (!purchase_order_ids || !status) {
-      return res.status(400).json({ error: 'purchase_order_ids and status are required' });
+  if (!purchase_order_ids || !status) {
+    return res.status(400).json({ 
+      error: 'purchase_order_ids and status are required' 
+    });
+  }
+
+  const ids = Array.isArray(purchase_order_ids) 
+    ? purchase_order_ids 
+    : [purchase_order_ids];
+
+  const placeholders = ids.map(() => '?').join(',');
+
+  const query = `
+    UPDATE purchase_order
+    SET status = ?
+    WHERE purchase_order_id IN (${placeholders})
+  `;
+
+  db.query(query, [status, ...ids], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Database error' });
     }
 
-    // Ensure purchase_order_ids is an array
-    const ids = Array.isArray(purchase_order_ids) ? purchase_order_ids : [purchase_order_ids];
-
-    // Build placeholders for MySQL query
-    const placeholders = ids.map(() => '?').join(',');
-
-    const query = `
-      UPDATE purchase_order
-      SET status = ?
-      WHERE purchase_order_id IN (${placeholders})
-    `;
-
-    await db.execute(query, [status, ...ids]);
-
-    res.status(200).json({ message: 'Status updated successfully' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
-  }
+    return res.status(200).json({
+      message: 'Status updated successfully',
+      affectedRows: result.affectedRows
+    });
+  });
 });
 
 app.get("/recapPurchaseInvoice", async (req, res) => {
