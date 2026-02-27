@@ -1671,6 +1671,7 @@ app.post('/editGoodsReceipt', (req, res, next) => {
         do_no=${db.escape(req.body.do_no)},
         sub_total=${db.escape(req.body.sub_total)},
         net_total=${db.escape(req.body.net_total)},
+        bill_discount=${db.escape(req.body.bill_discount)},
         modification_date=${db.escape(new Date().toISOString())}
     WHERE goods_receipt_id = ${db.escape(req.body.goods_receipt_id)}
   `,
@@ -1836,6 +1837,7 @@ app.post('/editGoodsReturn', (req, res, next) => {
         do_no=${db.escape(req.body.do_no)},
         sub_total=${db.escape(req.body.sub_total)},
         net_total=${db.escape(req.body.net_total)},
+        bill_discount=${db.escape(req.body.bill_discount)},
         modification_date=${db.escape(new Date().toISOString())}
     WHERE goods_return_id = ${db.escape(req.body.goods_return_id)}
   `,
@@ -1998,6 +2000,7 @@ app.post('/editPurchaseInvoice', (req, res, next) => {
         do_no=${db.escape(req.body.do_no)},
         sub_total=${db.escape(req.body.sub_total)},
         net_total=${db.escape(req.body.net_total)},
+        bill_discount=${db.escape(req.body.bill_discount)},
         modification_date=${db.escape(new Date().toISOString())}
     WHERE purchase_invoice_id = ${db.escape(req.body.purchase_invoice_id)}
   `,
@@ -2163,6 +2166,7 @@ app.post('/editPurchaseDebitNote', (req, res, next) => {
         do_no=${db.escape(req.body.do_no)},
         sub_total=${db.escape(req.body.sub_total)},
         net_total=${db.escape(req.body.net_total)},
+         bill_discount=${db.escape(req.body.bill_discount)},
         modification_date=${db.escape(new Date().toISOString())}
     WHERE purchase_debit_note_id = ${db.escape(req.body.purchase_debit_note_id)}
   `,
@@ -4029,7 +4033,39 @@ app.post('/convertToPurchaseDebitNote', (req, res) => {
 
 app.post('/repeatPurchaseOrder', (req, res, next) => {
     const { purchase_order_ids, created_by } = req.body;
+function getNextPurchaseOrderCode(callback) {
+    const sql = `
+        SELECT * FROM setting 
+        WHERE key_text='purchaseOrderCodePrefix' 
+           OR key_text='nextPurchaseOrderCode'
+    `;
 
+    db.query(sql, (err, result) => {
+        if (err) return callback(err);
+
+        const codeObj = result.find(r => r.key_text === 'nextPurchaseOrderCode');
+        const prefixObj = result.find(r => r.key_text === 'purchaseOrderCodePrefix');
+
+        const code = codeObj.value;
+        const prefix = prefixObj.value;
+
+        const finalCode = prefix + code;
+        const newValue = (parseInt(code) + 1).toString();
+
+        db.query(
+            `UPDATE setting SET value=? WHERE key_text='nextPurchaseOrderCode'`,
+            [newValue],
+            err2 => {
+                if (err2) return callback(err2);
+
+                callback(null, {
+                    po_code: finalCode,
+                    tran_no: parseInt(finalCode)
+                });
+            }
+        );
+    });
+}
     if (!purchase_order_ids || !Array.isArray(purchase_order_ids)) {
         return res.status(400).send({ msg: 'purchase_order_ids must be an array' });
     }
@@ -4056,6 +4092,12 @@ app.post('/repeatPurchaseOrder', (req, res, next) => {
 
         // Start a transaction or use a loop to handle multiple POs
         pos.forEach(po => {
+          
+          getNextPurchaseOrderCode((errCode, codeData) => {
+    if (errCode) return res.status(400).send({ data: errCode });
+
+    let newPoCode = codeData.po_code;
+    let newTranNo = codeData.tran_no;
             // 2️⃣ Use INSERT INTO SELECT to efficiently copy the PO header data
             // purchase_order_id (AUTO_INCREMENT) is excluded from the column list
             const insertHeaderQuery = `
@@ -4072,13 +4114,13 @@ app.post('/repeatPurchaseOrder', (req, res, next) => {
                     yr_quote_date, purchase_item, currency, terms_purchase,bill_discount,tax_amount
                 )
                 SELECT 
-                    po_code, site_id, supplier_id, contact_id_supplier, delivery_terms, 'Repeated' AS status, project_id,
+                    ?, site_id, supplier_id, contact_id_supplier, delivery_terms, 'Repeated' AS status, project_id,
                     flag, NOW() AS creation_date, NOW() AS modification_date, ? AS created_by, ? AS modified_by, supplier_reference_no, 
                     our_reference_no, shipping_method, payment_terms, delivery_date, po_date, 
                     shipping_address_flat, shipping_address_street, shipping_address_country, 
                     shipping_address_po_code, expense_id, staff_id, NOW() AS purchase_order_date, payment_status, 
                     title, priority, follow_up_date, notes, supplier_inv_code, gst, gst_percentage, 
-                    delivery_to, contact, mobile, payment, project, tran_no, tran_date, contact_address1, 
+                    delivery_to, contact, mobile, payment, project, ?, tran_date, contact_address1, 
                     contact_address2, contact_address3, country, remarks, req_delivery_date, 
                     contact_person, supplier_code, postal_code, sub_total, net_total, 
                     yr_quote_date, purchase_item, currency, terms_purchase,bill_discount,tax_amount
@@ -4087,7 +4129,11 @@ app.post('/repeatPurchaseOrder', (req, res, next) => {
             `;
             
             // Note: The status is hardcoded to 'Repeated' and dates are set to NOW()
-            const headerValues = [created_by, created_by, po.purchase_order_id];
+            const headerValues = [newPoCode,       // ⭐ NEW po_code
+    created_by,
+    created_by,
+    newTranNo,       // ⭐ NEW tran_no
+    po.purchase_order_id];
 
             db.query(insertHeaderQuery, headerValues, (err2, newPoResult) => {
                 if (err2) {
@@ -4127,7 +4173,9 @@ app.post('/repeatPurchaseOrder', (req, res, next) => {
                                 newPoId, p.item_title, p.quantity, p.unit, p.amount, p.description,
                                 created_by, created_by, p.status, p.cost_price,
                                 p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id,
-                                p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
+                                p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price, p.discount_amount, 
+    p.discount_percentage,
+    p.foc_qty,   
                                 p.carton_qty, p.loose_qty, p.carton_price, p.gross_total, p.discount, p.total
                             ];
 
@@ -4164,6 +4212,7 @@ app.post('/repeatPurchaseOrder', (req, res, next) => {
                 });
             });
         });
+      });
     });
 });
 
