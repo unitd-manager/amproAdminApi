@@ -48,12 +48,12 @@ jobs:
             rm -f api-update.zip
 
             echo "Setting NODE and PM2 paths..."
-            export NODE_PATH=/www/server/nvm/versions/node/v22.16.0/bin
+            export NODE_PATH=/www/server/nvm/versions/node/v24.13.0/bin
             export PATH=$NODE_PATH:$PATH
 
             echo "Restarting PM2 with absolute Node path..."
-            /www/server/nvm/versions/node/v22.16.0/bin/pm2 restart amproAdminapi --interpreter /www/server/nvm/versions/node/v22.16.0/bin/node || \
-            /www/server/nvm/versions/node/v22.16.0/bin/pm2 start App.js --name amproAdminapi --interpreter /www/server/nvm/versions/node/v22.16.0/bin/node
+            /www/server/nvm/versions/node/v24.13.0/bin/pm2 restart amproAdminapi --interpreter /www/server/nvm/versions/node/v24.13.0/bin/node || \
+            /www/server/nvm/versions/node/v24.13.0/bin/pm2 start App.js --name amproAdminapi --interpreter /www/server/nvm/versions/node/v24.13.0/bin/node
 
 
 
