@@ -244,7 +244,7 @@ LEFT JOIN geo_country gc ON (a.address_country = gc.country_code)
 LEFT JOIN job_information j ON (a.employee_id = j.employee_id)
 LEFT JOIN staff s ON (a.employee_id = s.employee_id)
 WHERE a.employee_id != '' AND a.status ='Current'${siteIdCondition}
-ORDER BY a.employee_name ASC  
+ORDER BY a.employee_name DESC  
   `;
 
   db.query(query, (err, result) => {
@@ -329,6 +329,7 @@ app.post('/getEmployeeByID', (req, res, next) => {
   ,a.employee_name
   ,a.employee_name_arb
   ,a.salutation
+  ,a.login_email
   ,a.salutation_arb
   ,a.gender
   ,a.gender_arb
@@ -357,7 +358,6 @@ app.post('/getEmployeeByID', (req, res, next) => {
   ,a.notes
   ,a.notes_arb
   ,gc.name AS country_name
-  ,a.email AS login_email
   ,a.email_arb AS login_email_arb
   ,a.pass_word AS login_pass_word
   ,a.user_group_id AS staff_user_group_id
@@ -375,7 +375,7 @@ LEFT JOIN geo_country gc ON (a.address_country = gc.country_code)
 LEFT JOIN job_information j ON (a.employee_id = j.employee_id)
 LEFT JOIN staff s ON (a.employee_id = s.employee_id)
 WHERE a.employee_id = ${db.escape(req.body.employee_id)}
-ORDER BY a.employee_name ASC`,
+ORDER BY a.employee_name DESC`,
     (err, result) => {
       if (err) {
         console.log('error: ', err)
@@ -445,6 +445,7 @@ app.post('/edit-Employee', (req, res, next) => {
          notes=${db.escape(req.body.notes)},
          notes_arb=${db.escape(req.body.notes_arb)},
          pay=${db.escape(req.body.pay)},
+          login_email=${db.escape(req.body.login_email)},
          pay_arb=${db.escape(req.body.pay_arb)},
          company_id=${db.escape(req.body.company_id)}
      WHERE employee_id=${db.escape(req.body.employee_id)}`,
@@ -959,6 +960,7 @@ app.post('/edit-ContactInformation', (req, res, next) => {
             ,phone=${db.escape(req.body.phone)}
             ,email=${db.escape(req.body.email)}
             ,foreign_addrs_area=${db.escape(req.body.foreign_addrs_area)}
+             ,foreign_addrs_country=${db.escape(req.body.foreign_addrs_country)}
             ,foreign_addrs_street=${db.escape(req.body.foreign_addrs_street)}
             ,foreign_addrs_postal_code=${db.escape(req.body.foreign_addrs_postal_code)}
             ,foreign_mobile=${db.escape(req.body.foreign_mobile)}

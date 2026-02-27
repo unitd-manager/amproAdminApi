@@ -92,6 +92,7 @@ app.post('/getLoanFromLocation', (req, res, next) => {
   FROM loan l
   LEFT JOIN (employee e) ON (e.employee_id = l.employee_id)
   WHERE l.loan_id !='' ${siteIdCondition}
+  ORDER BY l.loan_id DESC
   `;
 
   db.query(query, (err, result) => {

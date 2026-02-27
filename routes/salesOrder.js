@@ -637,6 +637,8 @@ app.post('/insertSalesOrder', (req, res, next) => {
      creation_date: new Date().toISOString()
     , modification_date: null
     , company_id: req.body.company_id
+     ,delivery_id: req.body.delivery_id
+     ,bill_discount: req.body.bill_discount
     , currency_id: req.body.currency_id
     , tran_no: req.body.tran_no
     , status: req.body.status
