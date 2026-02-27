@@ -514,7 +514,10 @@ app.post('/insertPoProduct', (req, res, next) => {
     total: req.body.total ?? 0,
     discount_percentage: req.body.discount_percentage ?? 0,
     discount_amount: req.body.discount_amount ?? 0,
-    
+    kilo_price: req.body.kilo_price ?? 0,
+    standard_rate: req.body.standard_rate?? 0,
+    uom: req.body.uom??'pcs',
+    remarks: req.body.remarks??'',
  };
  console.log(data)
   let sql = "INSERT INTO po_product SET ?";
@@ -1695,7 +1698,7 @@ app.post('/getGoodsReceiptById', (req, res, next) => {
     WHERE goods_receipt_id = ${db.escape(req.body.goods_receipt_id)}`,
     (err, result) => {
       if (err) return res.status(400).send({ data: err });
-      return res.status(200).send({ data: result[0], msg: 'Fetched successfully' });
+      return res.status(200).send({ data: result, msg: 'Fetched successfully' });
     }
   );
 });
@@ -1767,7 +1770,8 @@ app.post('/insertGoodsReturn', (req, res, next) => {
     invoice_no: req.body.invoice_no,
     do_no: req.body.do_no,
     sub_total: req.body.sub_total,
-    net_total: req.body.net_total
+    net_total: req.body.net_total,
+      bill_discount: req.body.bill_discount,
   };
 
   db.query('INSERT INTO goods_return SET ?', data, (err, result) => {
@@ -2236,8 +2240,12 @@ app.post('/deletePurchaseDebitNote', (req, res, next) => {
     gross_total: req.body.gross_total,
     discount: req.body.discount,
     total: req.body.total,
-     discount_percentage: req.body.discount_percentage ?? 0,
+      discount_percentage: req.body.discount_percentage ?? 0,
     discount_amount: req.body.discount_amount ?? 0,
+    kilo_price: req.body.kilo_price ?? 0,
+    standard_rate: req.body.standard_rate?? 0,
+    uom: req.body.uom??'pcs',
+    remarks: req.body.remarks??'',
   };
 
   db.query('INSERT INTO gr_product SET ?', data, (err, result) => {
@@ -2461,8 +2469,12 @@ app.post('/deleteGrProduct', (req, res, next) => {
     gross_total: req.body.gross_total,
     discount: req.body.discount,
     total: req.body.total,
-     discount_percentage: req.body.discount_percentage ?? 0,
+    discount_percentage: req.body.discount_percentage ?? 0,
     discount_amount: req.body.discount_amount ?? 0,
+    kilo_price: req.body.kilo_price ?? 0,
+    standard_rate: req.body.standard_rate?? 0,
+    uom: req.body.uom??'pcs',
+    remarks: req.body.remarks??'',
   };
 
   db.query('INSERT INTO goods_return_product SET ?', data, (err, result) => {
@@ -2962,7 +2974,10 @@ app.get('/getFilteredPurchaseDebitNote', (req, res) => {
     carton_price: req.body.carton_price,
     gross_total: req.body.gross_total,
     discount: req.body.discount,
-    total: req.body.total
+    total: req.body.total,
+    discount_percentage: req.body.discount_percentage ?? 0,
+    discount_amount: req.body.discount_amount ?? 0,
+    remarks: req.body.remarks??'',
   };
 
   db.query('INSERT INTO pi_product SET ?', data, (err, result) => {
@@ -3003,7 +3018,10 @@ app.post('/editPiProduct', (req, res, next) => {
         standard_rate=${db.escape(req.body.standard_rate)},
         foc_qty=${db.escape(req.body.foc_qty)},
         modification_date=${db.escape(new Date().toISOString())},
-        modified_by=${db.escape(req.body.modified_by)}
+        modified_by=${db.escape(req.body.modified_by)},
+          discount_percentage=${db.escape(req.body.discount_percentage)},
+          discount_amount=${db.escape(req.body.discount_amount)},
+          remarks=${db.escape(req.body.remarks)}
     WHERE pi_product_id = ${db.escape(req.body.pi_product_id)}
   `,
   (err, result) => {
@@ -3088,7 +3106,13 @@ app.post('/deletePiProduct', (req, res, next) => {
     carton_price: req.body.carton_price,
     gross_total: req.body.gross_total,
     discount: req.body.discount,
-    total: req.body.total
+    total: req.body.total,
+    discount_percentage: req.body.discount_percentage ?? 0,
+    discount_amount: req.body.discount_amount ?? 0,
+    kilo_price: req.body.kilo_price ?? 0,
+    standard_rate: req.body.standard_rate?? 0,
+    uom: req.body.uom??'pcs',
+    remarks: req.body.remarks??'',
   };
 
   db.query('INSERT INTO pd_product SET ?', data, (err, result) => {
@@ -3124,6 +3148,13 @@ app.post('/editPdProduct', (req, res, next) => {
         discount=${db.escape(req.body.discount)},
         total=${db.escape(req.body.total)},
         brand=${db.escape(req.body.brand)},
+        uom=${db.escape(req.body.uom)},
+        kilo_price=${db.escape(req.body.kilo_price)},
+        standard_rate=${db.escape(req.body.standard_rate)},
+        remarks=${db.escape(req.body.remarks)},
+        discount_percentage=${db.escape(req.body.discount_percentage)},
+        discount_amount=${db.escape(req.body.discount_amount)},
+        foc_qty=${db.escape(req.body.foc_qty)},
         modification_date=${db.escape(new Date().toISOString())},
         modified_by=${db.escape(req.body.modified_by)}
     WHERE pd_product_id = ${db.escape(req.body.pd_product_id)}

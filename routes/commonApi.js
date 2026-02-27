@@ -595,6 +595,26 @@ else if(type == 'lead'){
       key_text = 'nextPurchaseOrderCode';
          sql = "SELECT * FROM setting WHERE key_text='purchaseOrderCodePrefix' OR key_text='nextPurchaseOrderCode'";  
   }
+    else if(type == 'purchaseInvoice'){
+     
+      key_text = 'nextPurchaseInvoiceCode';
+         sql = "SELECT * FROM setting WHERE key_text='purchaseInvoiceCodePrefix' OR key_text='nextPurchaseInvoiceCode'";  
+  }
+    else if(type == 'purchaseDebitNote'){
+     
+      key_text = 'nextPurchaseDebitNoteCode';
+         sql = "SELECT * FROM setting WHERE key_text='purchaseDebitNoteCodePrefix' OR key_text='nextPurchaseDebitNoteCode'";  
+  }
+  else if(type == 'goodsReceipt'){
+     
+      key_text = 'nextGoodsReceiptCode';
+         sql = "SELECT * FROM setting WHERE key_text='goodsReceiptCodePrefix' OR key_text='nextGoodsReceiptCode'";  
+  }
+  else if(type == 'goodsReturn'){
+     
+      key_text = 'nextGoodsReturnCode';
+         sql = "SELECT * FROM setting WHERE key_text='goodsReturnCodePrefix' OR key_text='nextGoodsReturnCode'";  
+  }
    else if(type == 'ProductCode'){
       key_text = 'nextProductCode';
       sql = "SELECT * FROM setting WHERE key_text='nextProductCodePrefix' OR key_text='nextProductCode'";  
