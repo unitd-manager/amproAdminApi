@@ -40,6 +40,319 @@ ORDER BY c.salesman_name ASC`,
   );
 });
 
+app.post('/addDvOrderSalesman', (req, res, next) => {
+
+  let data = {
+      salesman_name: req.body.salesman_name,
+  delivery_order_id: req.body.delivery_order_id, 
+    sales_id: req.body.sales_id
+      
+  };
+  let sql = "INSERT INTO sales_person_order SET ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      result(err, null);
+      return;
+    } else {
+          return res.status(200).send({
+            data: result,
+            msg:'New Company has been created successfully'
+          });
+    }
+  });
+});
+
+app.post('/getDvOrderSalesmen', (req, res, next) => {
+  db.query(`SELECT DISTINCT a.sales_person_order_id
+  ,a.sales_id
+  ,a.salesman_name
+  ,a.delivery_order_id
+ 
+FROM sales_person_order a
+WHERE a.delivery_order_id = ${db.escape(req.body.delivery_order_id)}
+ORDER BY a.salesman_name ASC`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+    }
+  );
+});
+
+app.post('/removeDvOrderSalesman', (req, res, next) => {
+  const { sales_id, delivery_order_id } = req.body;
+  
+  // Validate inputs
+  if (!sales_id || !delivery_order_id) {
+    return res.status(400).send({
+      data: null,
+      msg: 'sales_id and delivery_order_id are required',
+    });
+  }
+
+  let sql = "DELETE FROM sales_person_order WHERE `sales_id` = ? AND `delivery_order_id` = ?";
+  let query = db.query(sql, [sales_id, delivery_order_id], (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+      });
+    }
+  });
+});
+
+
+app.post('/addCreditNoteSalesman', (req, res, next) => {
+
+  let data = {
+      salesman_name: req.body.salesman_name,
+  credit_note_id: req.body.credit_note_id, 
+    sales_id: req.body.sales_id
+      
+  };
+  let sql = "INSERT INTO sales_person_order SET ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      result(err, null);
+      return;
+    } else {
+          return res.status(200).send({
+            data: result,
+            msg:'New Company has been created successfully'
+          });
+    }
+  });
+});
+
+app.post('/getCreditNoteSalesmen', (req, res, next) => {
+  db.query(`SELECT DISTINCT a.sales_person_order_id
+  ,a.sales_id
+  ,a.salesman_name
+  ,a.credit_note_id
+ 
+FROM sales_person_order a
+WHERE a.credit_note_id = ${db.escape(req.body.credit_note_id)}
+ORDER BY a.salesman_name ASC`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+    }
+  );
+});
+
+app.post('/removeCreditNoteSalesman', (req, res, next) => {
+  const { sales_id, credit_note_id } = req.body;
+  
+  // Validate inputs
+  if (!sales_id || !credit_note_id) {
+    return res.status(400).send({
+      data: null,
+      msg: 'sales_id and credit_note_id are required',
+    });
+  }
+
+  let sql = "DELETE FROM sales_person_order WHERE `sales_id` = ? AND `credit_note_id` = ?";
+  let query = db.query(sql, [sales_id, credit_note_id], (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+      });
+    }
+  });
+});
+
+
+
+app.post('/addSalesReturnSalesman', (req, res, next) => {
+
+  let data = {
+      salesman_name: req.body.salesman_name,
+  sales_return_id: req.body.sales_return_id, 
+    sales_id: req.body.sales_id
+      
+  };
+  let sql = "INSERT INTO sales_person_order SET ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      result(err, null);
+      return;
+    } else {
+          return res.status(200).send({
+            data: result,
+            msg:'New Company has been created successfully'
+          });
+    }
+  });
+});
+
+app.post('/getSalesReturnSalesmen', (req, res, next) => {
+  db.query(`SELECT DISTINCT a.sales_person_order_id
+  ,a.sales_id
+  ,a.salesman_name
+  ,a.sales_return_id
+ 
+FROM sales_person_order a
+WHERE a.sales_return_id = ${db.escape(req.body.sales_return_id)}
+ORDER BY a.salesman_name ASC`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+    }
+  );
+});
+
+app.post('/removeSalesReturnSalesman', (req, res, next) => {
+  const { sales_id, sales_return_id } = req.body;
+  
+  // Validate inputs
+  if (!sales_id || !sales_return_id) {
+    return res.status(400).send({
+      data: null,
+      msg: 'sales_id and sales_return_id are required',
+    });
+  }
+
+  let sql = "DELETE FROM sales_person_order WHERE `sales_id` = ? AND `sales_return_id` = ?";
+  let query = db.query(sql, [sales_id, sales_return_id], (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+      });
+    }
+  });
+});
+
+
+app.post('/addInvoiceSalesman', (req, res, next) => {
+
+  let data = {
+      salesman_name: req.body.salesman_name,
+  invoice_id: req.body.invoice_id, 
+    sales_id: req.body.sales_id
+      
+  };
+  let sql = "INSERT INTO sales_person_order SET ?";
+  let query = db.query(sql, data,(err, result) => {
+    if (err) {
+      console.log("error: ", err);
+      result(err, null);
+      return;
+    } else {
+          return res.status(200).send({
+            data: result,
+            msg:'New Company has been created successfully'
+          });
+    }
+  });
+});
+
+app.post('/getInvoiceSalesmen', (req, res, next) => {
+  db.query(`SELECT DISTINCT a.sales_person_order_id
+  ,a.sales_id
+  ,a.salesman_name
+  ,a.invoice_id
+ 
+FROM sales_person_order a
+WHERE a.invoice_id = ${db.escape(req.body.invoice_id)}
+ORDER BY a.salesman_name ASC`,
+    (err, result) => {
+      if (err) {
+        console.log('error: ', err)
+        return res.status(400).send({
+          data: err,
+          msg: 'failed',
+        })
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: 'Success',
+            });
+      }
+    }
+  );
+});
+
+app.post('/removeInvoiceSalesman', (req, res, next) => {
+  const { sales_id, invoice_id } = req.body;
+  
+  // Validate inputs
+  if (!sales_id || !invoice_id) {
+    return res.status(400).send({
+      data: null,
+      msg: 'sales_id and invoice_id are required',
+    });
+  }
+
+  let sql = "DELETE FROM sales_person_order WHERE `sales_id` = ? AND `invoice_id` = ?";
+  let query = db.query(sql, [sales_id, invoice_id], (err, result) => {
+    if (err) {
+      console.log('error: ', err);
+      return res.status(400).send({
+        data: err,
+        msg: 'failed',
+      });
+    } else {
+      return res.status(200).send({
+        data: result,
+        msg: 'Success',
+      });
+    }
+  });
+});
+
+
 
 app.post('/addSalesOrderSalesman', (req, res, next) => {
 

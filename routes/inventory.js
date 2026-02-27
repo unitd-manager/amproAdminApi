@@ -638,10 +638,10 @@ WHERE pop.product_id != ''`,
 // });
 
 app.post('/gettabPurchaseOrderLinkedById', (req, res, next) => {
-  db.query(`SELECT pop.cost_price
+  db.query(`SELECT pop.net_total
   ,pop.qty
-  ,po.po_code
-  ,po.purchase_order_date
+  ,po.tran_no
+  ,po.tran_date
   ,po.purchase_order_id
   ,po.creation_date
   ,po.supplier_id
