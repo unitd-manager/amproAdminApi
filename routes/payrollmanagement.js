@@ -62,7 +62,7 @@ app.get('/getpayrollmanagementMain', (req, res, next) => {
   FROM payroll_management pm
   LEFT JOIN (employee e) ON (e.employee_id = pm.employee_id)
   WHERE pm.payroll_management_id != ''
-  ORDER BY e.employee_name ASC`,
+  ORDER BY pm.payroll_management_id DESC`,
     (err, result) => {
       if (err) {
         console.log('error: ', err)

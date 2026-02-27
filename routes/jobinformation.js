@@ -91,6 +91,7 @@ app.post('/getJobinformationFromLocation', (req, res, next) => {
  FROM job_information j
  LEFT JOIN (employee e) ON (e.employee_id = j.employee_id)
  WHERE j.job_information_id != ''  ${siteIdCondition}
+ ORDER BY j.job_information_id DESC
   `;
 
   db.query(query, (err, result) => {

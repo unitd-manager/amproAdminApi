@@ -2267,7 +2267,9 @@ app.post('/insertInvoice', (req, res, next) => {
     ,  sales_return_id: req.body.sales_return_id
     , sales_return_amount: req.body.sales_return_amount
     , sales_return_date: req.body.sales_return_date
-
+,delivery_id: req.body.delivery_id
+,sales_id: req.body.sales_id
+,bill_discount: req.body.bill_discount
     , status: 'Not Paid'
     , flag: req.body.flag
     , created_by: req.body.created_by

@@ -574,6 +574,9 @@ app.post('/editSalesOrder', (req, res, next) => {
     , modification_date: null
     , company_id: req.body.company_id
     , currency_id	: req.body.currency_id
+    ,delivery_id: req.body.delivery_id
+,sales_id: req.body.sales_id
+,bill_discount: req.body.bill_discount
     , credit_note_code: req.body.credit_note_code
     , status: req.body.status
     , credit_note_date: req.body.credit_note_date
@@ -637,6 +640,8 @@ app.post('/insertSalesOrder', (req, res, next) => {
      creation_date: new Date().toISOString()
     , modification_date: null
     , company_id: req.body.company_id
+     ,delivery_id: req.body.delivery_id
+     ,bill_discount: req.body.bill_discount
     , currency_id: req.body.currency_id
     , tran_no: req.body.tran_no
     , status: req.body.status
@@ -1794,10 +1799,12 @@ app.post('/insertVerificationItems', (req, res, next) => {
       company_id: req.body.company_id,
       currency_id: req.body.currency_id,
       creation_date: req.body.creation_date,
+      delivery_id: req.body.delivery_id,
+      bill_discount: req.body.bill_discount,
       delivery_status: req.body.delivery_status,
       date: req.body.date,
       created_by: req.body.created_by,
-   
+   sales_id: req.body.sales_id,
       delivery_code: req.body.delivery_code,
   
     };

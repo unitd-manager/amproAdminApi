@@ -21,7 +21,8 @@ app.use(fileUpload({
 app.get('/getstockrequest', (req, res, next) => {
   db.query(`Select s.*
   From stock_request s
-  Where s.stock_request_id !=''`,
+  Where s.stock_request_id !=''
+  ORDER BY s.stock_request_id DESC`,
   (err, result) => {
     if (err) {
       console.log('error: ', err);

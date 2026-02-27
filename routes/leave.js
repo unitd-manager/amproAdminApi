@@ -306,6 +306,7 @@ app.get('/getLeave', (req, res, next) => {
       LEFT JOIN employee e ON l.employee_id = e.employee_id
       LEFT JOIN job_information j ON j.employee_id = l.employee_id
       WHERE l.leave_id != ''  ${siteIdCondition}
+      ORDER BY l.leave_id DESC
     `;
   
     db.query(query, (err, result) => {

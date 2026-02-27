@@ -1849,7 +1849,7 @@ app.get("/getProductAdmin", (req, res, next) => {
      LEFT JOIN department_cli d ON d.department_cli_id = p.department_id
      LEFT JOIN supplier s  ON s.supplier_id = p.supplier_id
     where p.product_id != ''
-     GROUP BY p.product_id DESC `,
+     ORDER BY p.product_id DESC`,
     (err, result) => {
       if (err) {
         console.log("error: ", err);
