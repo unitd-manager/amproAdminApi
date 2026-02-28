@@ -74,6 +74,28 @@ app.get("/getContactSubByiD", (req, res, next) => {
   );
 });
 
+app.get("/getContactBySupplierId", (req, res, next) => {
+  db.query(
+    `Select s.*
+  From contact s
+  WHERE s.supplier_id='${db.escape(req.body.supplier_id)}' `,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
 app.post("/getContactByContactId", (req, res, next) => {
   db.query(
     `Select s.*
