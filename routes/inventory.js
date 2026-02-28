@@ -638,7 +638,7 @@ WHERE pop.product_id != ''`,
 // });
 
 app.post('/gettabPurchaseOrderLinkedById', (req, res, next) => {
-  db.query(`SELECT pop.net_total
+  db.query(`SELECT pop.gross_total
   ,pop.qty
   ,po.tran_no
   ,po.tran_date
