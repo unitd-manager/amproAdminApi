@@ -74,7 +74,7 @@ app.get("/getContactSubByiD", (req, res, next) => {
   );
 });
 
-app.get("/getContactBySupplierId", (req, res, next) => {
+app.post("/getContactBySupplierId", (req, res, next) => {
   db.query(
     `Select s.*
   From contact s
