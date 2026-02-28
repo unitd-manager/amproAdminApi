@@ -649,7 +649,7 @@ app.post('/gettabPurchaseOrderLinkedById', (req, res, next) => {
   ,com.company_name
 FROM po_product pop
 LEFT JOIN purchase_order po ON po.purchase_order_id = pop.purchase_order_id
-LEFT JOIN supplier com ON pop.supplier_id = com.supplier_id
+LEFT JOIN supplier com ON po.supplier_id = com.supplier_id
 WHERE pop.product_id = ${db.escape(req.body.product_id)}`,
     (err, result) => {
        
@@ -701,14 +701,13 @@ app.get('/getTabProjectLinked', (req, res, next) => {
 });
 
 app.post('/getTabProjectLinkedById', (req, res, next) => {
-  db.query(`SELECT DISTINCT p.project_id
-           ,pm.product_id
-           ,pm.material_used_date
-           ,p.title
+  db.query(`SELECT DISTINCT
+           pm.product_id
+           ,p.invoice_date
            ,com.company_name
            ,pm.quantity
-           FROM project_materials pm
-           LEFT JOIN project p ON (p.project_id = pm.project_id)
+           FROM invoice_item pm
+           LEFT JOIN invoice p ON (p.invoice_id = pm.invoice_id)
            LEFT JOIN company com ON (com.company_id = p.company_id)
            WHERE pm.product_id = ${db.escape(req.body.product_id)}`,
     (err, result) => {
