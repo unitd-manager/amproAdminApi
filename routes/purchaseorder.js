@@ -2384,7 +2384,41 @@ app.post('/ConvertToPurchaseInvoice', (req, res, next) => {
 app.post('/RepeatGoodsReceipt', (req, res, next) => {
   const ids = req.body.goods_receipt_ids;
   const created_by = req.body.created_by;
+function getNextGoodsReceiptCodeAsync() {
+  return new Promise((resolve, reject) => {
 
+    const sql = `
+      SELECT * FROM setting 
+      WHERE key_text IN ('goodsReceiptCodePrefix', 'nextGoodsReceiptCode')
+    `;
+
+    db.query(sql, (err, result) => {
+      if (err) return reject(err);
+
+      const codeObj = result.find(r => r.key_text === 'nextGoodsReceiptCode');
+      const prefixObj = result.find(r => r.key_text === 'goodsReceiptCodePrefix');
+
+      const code = parseInt(codeObj.value);
+      const prefix = prefixObj.value;
+
+      const finalCode = prefix + code;
+      const newValue = (code + 1).toString();
+
+      db.query(
+        `UPDATE setting SET value=? WHERE key_text='nextGoodsReceiptCode'`,
+        [newValue],
+        err2 => {
+          if (err2) return reject(err2);
+
+          resolve({
+            gr_code: finalCode,
+            tran_no: finalCode
+          });
+        }
+      );
+    });
+  });
+}
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).send({ msg: 'No records selected' });
   }
@@ -3574,33 +3608,76 @@ app.post('/deletePurchaseInvoices', (req, res, next) => {
   });
 });
 
-app.post('/repeatGoodsReceipt', (req, res,next) => {
+app.post('/repeatGoodsReceipt', async (req, res, next) => {
+
   const { goods_receipt_ids, created_by } = req.body;
 
   if (!goods_receipt_ids || !Array.isArray(goods_receipt_ids)) {
     return res.status(400).send({ msg: 'goods_receipt_ids must be an array' });
   }
 
+  function getNextGoodsReceiptCodeAsync() {
+    return new Promise((resolve, reject) => {
+
+      const sql = `
+        SELECT * FROM setting 
+        WHERE key_text IN ('goodsReceiptCodePrefix', 'nextGoodsReceiptCode')
+      `;
+
+      db.query(sql, (err, result) => {
+        if (err) return reject(err);
+
+        const codeObj = result.find(r => r.key_text === 'nextGoodsReceiptCode');
+        const prefixObj = result.find(r => r.key_text === 'goodsReceiptCodePrefix');
+
+        const code = parseInt(codeObj.value);
+        const prefix = prefixObj.value;
+
+        const finalCode = prefix + code;
+        const newValue = (code + 1).toString();
+
+        db.query(
+          `UPDATE setting SET value=? WHERE key_text='nextGoodsReceiptCode'`,
+          [newValue],
+          err2 => {
+            if (err2) return reject(err2);
+
+            resolve({
+              gr_code: finalCode,
+              tran_no: finalCode
+            });
+          }
+        );
+      });
+    });
+  }
+
   const ids = goods_receipt_ids.map(id => db.escape(id)).join(',');
 
-  // 1️⃣ Fetch all selected Goods Receipts
-  const grQuery = `SELECT * FROM goods_receipt WHERE goods_receipt_id IN (${ids})`;
+  const grQuery = `
+    SELECT * FROM goods_receipt 
+    WHERE goods_receipt_id IN (${ids})
+  `;
 
-  db.query(grQuery, (err, grs) => {
-    if (err) {
-      console.error(err);
-      return res.status(400).send({ data: err });
-    }
+  // ⭐ MAKE THIS CALLBACK ASYNC
+  db.query(grQuery, async (err, grs) => {
+
+    if (err) return res.status(400).send({ data: err });
 
     if (!grs.length) {
       return res.status(404).send({ msg: 'No Goods Receipts found' });
     }
 
-    // For each GR, create a new GR and copy its products
     const repeatedGrs = [];
-
     let pending = grs.length;
-    grs.forEach(gr => {
+
+    for (const gr of grs) {
+
+      const codeData = await getNextGoodsReceiptCodeAsync();
+
+      const newTranNo = codeData.tran_no;
+      const newGrCode = codeData.gr_code;
+
       const insertHeaderQuery = `
         INSERT INTO goods_receipt 
           (purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier, 
@@ -3615,19 +3692,64 @@ app.post('/repeatGoodsReceipt', (req, res,next) => {
         VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `;
 
+      // ⭐ FIXED ORDER (po_code replaced by newGrCode)
       const headerValues = [
-        gr.purchase_order_id, gr.po_code, gr.site_id, gr.supplier_id, gr.contact_id_supplier,
-        gr.delivery_terms, 'Repeated', gr.project_id, gr.flag,
-        created_by, created_by, gr.supplier_reference_no, gr.our_reference_no, gr.shipping_method,
-        gr.payment_terms, gr.delivery_date, gr.po_date, gr.shipping_address_flat, gr.shipping_address_street,
-        gr.shipping_address_country, gr.shipping_address_po_code, gr.expense_id, gr.staff_id, new Date(),
-        gr.payment_status, gr.title, gr.priority, gr.follow_up_date, gr.notes, gr.supplier_inv_code,
-        gr.gst, gr.gst_percentage, gr.delivery_to, gr.contact, gr.mobile, gr.payment, gr.project, gr.tran_no, gr.tran_date,
-        gr.contact_address1, gr.contact_address2, gr.contact_address3, gr.country, gr.remarks, gr.req_delivery_date,
-        gr.contact_person, gr.invoice_date, gr.postal_code, gr.invoice_no, gr.do_no, gr.sub_total, gr.net_total
+        gr.purchase_order_id,
+        newGrCode,                // NEW po_code
+        gr.site_id,
+        gr.supplier_id,
+        gr.contact_id_supplier,
+        gr.delivery_terms,
+        'Repeated',
+        gr.project_id,
+        gr.flag,
+        created_by,
+        created_by,
+        gr.supplier_reference_no,
+        gr.our_reference_no,
+        gr.shipping_method,
+        gr.payment_terms,
+        gr.delivery_date,
+        gr.po_date,
+        gr.shipping_address_flat,
+        gr.shipping_address_street,
+        gr.shipping_address_country,
+        gr.shipping_address_po_code,
+        gr.expense_id,
+        gr.staff_id,
+        new Date(),
+        gr.payment_status,
+        gr.title,
+        gr.priority,
+        gr.follow_up_date,
+        gr.notes,
+        gr.supplier_inv_code,
+        gr.gst,
+        gr.gst_percentage,
+        gr.delivery_to,
+        gr.contact,
+        gr.mobile,
+        gr.payment,
+        gr.project,
+        newTranNo,               // NEW tran_no
+        new Date(),
+        gr.contact_address1,
+        gr.contact_address2,
+        gr.contact_address3,
+        gr.country,
+        gr.remarks,
+        gr.req_delivery_date,
+        gr.contact_person,
+        gr.invoice_date,
+        gr.postal_code,
+        gr.invoice_no,
+        gr.do_no,
+        gr.sub_total,
+        gr.net_total
       ];
 
       db.query(insertHeaderQuery, headerValues, (err2, newGrResult) => {
+
         if (err2) {
           console.error(err2);
           return res.status(400).send({ data: err2 });
@@ -3635,19 +3757,24 @@ app.post('/repeatGoodsReceipt', (req, res,next) => {
 
         const newGrId = newGrResult.insertId;
 
-        // 2️⃣ Copy products for this GR
-        const productQuery = `SELECT * FROM gr_product WHERE goods_receipt_id = ?`;
+        const productQuery = `
+          SELECT * FROM gr_product 
+          WHERE goods_receipt_id = ?
+        `;
 
         db.query(productQuery, [gr.goods_receipt_id], (err3, products) => {
+
           if (err3) {
             console.error(err3);
             return res.status(400).send({ data: err3 });
           }
 
           if (products.length) {
+
             let productPending = products.length;
 
             products.forEach(p => {
+
               const insertProductQuery = `
                 INSERT INTO gr_product 
                   (goods_receipt_id, purchase_order_id, item_title, quantity, unit, amount, description, 
@@ -3659,23 +3786,53 @@ app.post('/repeatGoodsReceipt', (req, res,next) => {
               `;
 
               const productValues = [
-                newGrId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
-                created_by, created_by, p.status, p.cost_price,
-                p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id, p.gst, p.damage_qty, p.brand,
-                p.qty_requested, p.qty_delivered, p.price, p.carton_qty, p.loose_qty, p.carton_price, p.gross_total,
-                p.discount, p.total
+                newGrId,
+                p.purchase_order_id,
+                p.item_title,
+                p.quantity,
+                p.unit,
+                p.amount,
+                p.description,
+                created_by,
+                created_by,
+                p.status,
+                p.cost_price,
+                p.selling_price,
+                p.qty_updated,
+                p.qty,
+                p.product_id,
+                p.supplier_id,
+                p.gst,
+                p.damage_qty,
+                p.brand,
+                p.qty_requested,
+                p.qty_delivered,
+                p.price,
+                p.carton_qty,
+                p.loose_qty,
+                p.carton_price,
+                p.gross_total,
+                p.discount,
+                p.total
               ];
 
               db.query(insertProductQuery, productValues, err4 => {
+
                 if (err4) {
                   console.error(err4);
                   return res.status(400).send({ data: err4 });
                 }
 
                 productPending--;
+
                 if (productPending === 0) {
-                  repeatedGrs.push({ old_gr_id: gr.goods_receipt_id, new_gr_id: newGrId });
+                  repeatedGrs.push({
+                    old_gr_id: gr.goods_receipt_id,
+                    new_gr_id: newGrId
+                  });
+
                   pending--;
+
                   if (pending === 0) {
                     return res.status(200).send({
                       data: repeatedGrs,
@@ -3685,10 +3842,16 @@ app.post('/repeatGoodsReceipt', (req, res,next) => {
                 }
               });
             });
+
           } else {
-            // No products, just push header
-            repeatedGrs.push({ old_gr_id: gr.goods_receipt_id, new_gr_id: newGrId });
+
+            repeatedGrs.push({
+              old_gr_id: gr.goods_receipt_id,
+              new_gr_id: newGrId
+            });
+
             pending--;
+
             if (pending === 0) {
               return res.status(200).send({
                 data: repeatedGrs,
@@ -3698,7 +3861,7 @@ app.post('/repeatGoodsReceipt', (req, res,next) => {
           }
         });
       });
-    });
+    }
   });
 });
 
@@ -3834,7 +3997,8 @@ app.post('/ConvertToPurchaseInvoice', (req, res, next) => {
   });
 });
 
-app.post('/repeatGoodsReturn', (req, res) => {
+app.post('/repeatGoodsReturn', async (req, res) => {
+
   const { goods_return_ids, created_by } = req.body;
 
   if (!goods_return_ids || !Array.isArray(goods_return_ids)) {
@@ -3843,10 +4007,13 @@ app.post('/repeatGoodsReturn', (req, res) => {
 
   const ids = goods_return_ids.map(id => db.escape(id)).join(',');
 
-  // 1️⃣ Fetch all selected Goods Returns
-  const grQuery = `SELECT * FROM goods_return WHERE goods_return_id IN (${ids})`;
+  const grQuery = `
+    SELECT * FROM goods_return 
+    WHERE goods_return_id IN (${ids})
+  `;
 
-  db.query(grQuery, (err, grs) => {
+  db.query(grQuery, async (err, grs) => {
+
     if (err) return res.status(400).send({ data: err });
 
     if (!grs.length) {
@@ -3854,9 +4021,15 @@ app.post('/repeatGoodsReturn', (req, res) => {
     }
 
     const repeatedGRs = [];
-    let pending = grs.length;
 
-    grs.forEach(gr => {
+    // 🔥 SEQUENTIAL LOOP
+    for (const gr of grs) {
+
+      const codeData = await getNextGoodsReturnCodeAsync();
+
+      const newTranNo = codeData.tran_no;
+      const newGrCode = codeData.gr_code;
+
       const insertHeaderQuery = `
         INSERT INTO goods_return
           (po_code, site_id, supplier_id, contact_id_supplier, delivery_terms, status, project_id, flag,
@@ -3871,68 +4044,142 @@ app.post('/repeatGoodsReturn', (req, res) => {
       `;
 
       const headerValues = [
-        gr.po_code, gr.site_id, gr.supplier_id, gr.contact_id_supplier, gr.delivery_terms, "Repeated", gr.project_id, gr.flag,
-        created_by, created_by, gr.supplier_reference_no, gr.our_reference_no, gr.shipping_method, gr.payment_terms, 
-        gr.delivery_date, gr.po_date, gr.shipping_address_flat, gr.shipping_address_street, gr.shipping_address_country, 
-        gr.shipping_address_po_code, gr.expense_id, gr.staff_id, gr.goods_receipt_date, gr.payment_status, gr.title, gr.priority,
-        gr.follow_up_date, gr.notes, gr.supplier_inv_code, gr.gst, gr.gst_percentage, gr.delivery_to, gr.contact, gr.mobile,
-        gr.payment, gr.project, gr.tran_no, gr.tran_date, gr.contact_address1, gr.contact_address2, gr.contact_address3,
-        gr.country, gr.remarks, gr.req_delivery_date, gr.contact_person, gr.purchase_order_id, gr.invoice_date,
-        gr.invoice_no, gr.postal_code, gr.do_no, gr.sub_total, gr.net_total
+        newGrCode,                 // ⭐ NEW CODE
+        gr.site_id,
+        gr.supplier_id,
+        gr.contact_id_supplier,
+        gr.delivery_terms,
+        "Repeated",
+        gr.project_id,
+        gr.flag,
+        created_by,
+        created_by,
+        gr.supplier_reference_no,
+        gr.our_reference_no,
+        gr.shipping_method,
+        gr.payment_terms,
+        gr.delivery_date,
+        gr.po_date,
+        gr.shipping_address_flat,
+        gr.shipping_address_street,
+        gr.shipping_address_country,
+        gr.shipping_address_po_code,
+        gr.expense_id,
+        gr.staff_id,
+        new Date(),
+        gr.payment_status,
+        gr.title,
+        gr.priority,
+        gr.follow_up_date,
+        gr.notes,
+        gr.supplier_inv_code,
+        gr.gst,
+        gr.gst_percentage,
+        gr.delivery_to,
+        gr.contact,
+        gr.mobile,
+        gr.payment,
+        gr.project,
+        newTranNo,                // ⭐ NEW TRAN NO
+        new Date(),
+        gr.contact_address1,
+        gr.contact_address2,
+        gr.contact_address3,
+        gr.country,
+        gr.remarks,
+        gr.req_delivery_date,
+        gr.contact_person,
+        gr.purchase_order_id,
+        gr.invoice_date,
+        gr.invoice_no,
+        gr.postal_code,
+        gr.do_no,
+        gr.sub_total,
+        gr.net_total
       ];
 
-      db.query(insertHeaderQuery, headerValues, (err2, newGR) => {
-        if (err2) return res.status(400).send({ data: err2 });
-
-        const newGrId = newGR.insertId;
-
-        // 2️⃣ Copy products
-        db.query(`SELECT * FROM goods_return_product WHERE goods_return_id=?`, [gr.goods_return_id], (err3, products) => {
-          if (err3) return res.status(400).send({ data: err3 });
-
-          if (products.length) {
-            let productPending = products.length;
-
-            products.forEach(p => {
-              const insertProductQuery = `
-                INSERT INTO goods_return_product
-                  (goods_return_id, purchase_order_id, item_title, quantity, unit, amount, description,
-                   creation_date, modification_date, created_by, modified_by, status, cost_price, selling_price,
-                   qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand, qty_requested, qty_delivered,
-                   price, carton_qty, loose_qty, carton_price, gross_total, discount, total)
-                VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-              `;
-              const productValues = [
-                newGrId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
-                created_by, created_by, p.status, p.cost_price, p.selling_price, p.qty_updated, p.qty, p.product_id,
-                p.supplier_id, p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
-                p.carton_qty, p.loose_qty, p.carton_price, p.gross_total, p.discount, p.total
-              ];
-
-              db.query(insertProductQuery, productValues, err4 => {
-                if (err4) return res.status(400).send({ data: err4 });
-
-                productPending--;
-                if (productPending === 0) {
-                  repeatedGRs.push({ old_gr_id: gr.goods_return_id, new_gr_id: newGrId });
-                  pending--;
-                  if (pending === 0) {
-                    return res.status(200).send({ msg: "Goods Returns repeated successfully", data: repeatedGRs });
-                  }
-                }
-              });
-            });
-          } else {
-            repeatedGRs.push({ old_gr_id: gr.goods_return_id, new_gr_id: newGrId });
-            pending--;
-            if (pending === 0) {
-              return res.status(200).send({ msg: "Goods Returns repeated successfully", data: repeatedGRs });
-            }
-          }
+      const newGR = await new Promise((resolve, reject) => {
+        db.query(insertHeaderQuery, headerValues, (e, r) => {
+          if (e) reject(e);
+          else resolve(r);
         });
       });
+
+      const newGrId = newGR.insertId;
+
+      // 🔹 Copy products
+      const products = await new Promise((resolve, reject) => {
+        db.query(
+          `SELECT * FROM goods_return_product WHERE goods_return_id=?`,
+          [gr.goods_return_id],
+          (e, r) => (e ? reject(e) : resolve(r))
+        );
+      });
+
+      for (const p of products) {
+
+        const insertProductQuery = `
+          INSERT INTO goods_return_product
+            (goods_return_id, purchase_order_id, item_title, quantity, unit, amount, description,
+             creation_date, modification_date, created_by, modified_by, status, cost_price, selling_price,
+             qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand, qty_requested, qty_delivered,
+             price, carton_qty, loose_qty, carton_price, gross_total, discount, total)
+          VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `;
+
+        const productValues = [
+          newGrId,
+          p.purchase_order_id,
+          p.item_title,
+          p.quantity,
+          p.unit,
+          p.amount,
+          p.description,
+          created_by,
+          created_by,
+          p.status,
+          p.cost_price,
+          p.selling_price,
+          p.qty_updated,
+          p.qty,
+          p.product_id,
+          p.supplier_id,
+          p.gst,
+          p.damage_qty,
+          p.brand,
+          p.qty_requested,
+          p.qty_delivered,
+          p.price,
+          p.carton_qty,
+          p.loose_qty,
+          p.carton_price,
+          p.gross_total,
+          p.discount,
+          p.total
+        ];
+
+        await new Promise((resolve, reject) => {
+          db.query(insertProductQuery, productValues, e => {
+            if (e) reject(e);
+            else resolve();
+          });
+        });
+      }
+
+      repeatedGRs.push({
+        old_gr_id: gr.goods_return_id,
+        new_gr_id: newGrId,
+        code: newGrCode
+      });
+    }
+
+    res.status(200).send({
+      msg: "Goods Returns repeated successfully",
+      data: repeatedGRs
     });
+
   });
+
 });
 
 app.post('/convertToPurchaseDebitNote', (req, res) => {
@@ -4033,38 +4280,40 @@ app.post('/convertToPurchaseDebitNote', (req, res) => {
 
 app.post('/repeatPurchaseOrder', (req, res, next) => {
     const { purchase_order_ids, created_by } = req.body;
-function getNextPurchaseOrderCode(callback) {
+function getNextPurchaseOrderCodeAsync() {
+  return new Promise((resolve, reject) => {
+
     const sql = `
-        SELECT * FROM setting 
-        WHERE key_text='purchaseOrderCodePrefix' 
-           OR key_text='nextPurchaseOrderCode'
+      SELECT * FROM setting 
+      WHERE key_text IN ('purchaseOrderCodePrefix', 'nextPurchaseOrderCode')
     `;
 
     db.query(sql, (err, result) => {
-        if (err) return callback(err);
+      if (err) return reject(err);
 
-        const codeObj = result.find(r => r.key_text === 'nextPurchaseOrderCode');
-        const prefixObj = result.find(r => r.key_text === 'purchaseOrderCodePrefix');
+      const codeObj = result.find(r => r.key_text === 'nextPurchaseOrderCode');
+      const prefixObj = result.find(r => r.key_text === 'purchaseOrderCodePrefix');
 
-        const code = codeObj.value;
-        const prefix = prefixObj.value;
+      const code = parseInt(codeObj.value);
+      const prefix = prefixObj.value;
 
-        const finalCode = prefix + code;
-        const newValue = (parseInt(code) + 1).toString();
+      const finalCode = prefix + code;
+      const newValue = (code + 1).toString();
 
-        db.query(
-            `UPDATE setting SET value=? WHERE key_text='nextPurchaseOrderCode'`,
-            [newValue],
-            err2 => {
-                if (err2) return callback(err2);
+      db.query(
+        `UPDATE setting SET value=? WHERE key_text='nextPurchaseOrderCode'`,
+        [newValue],
+        err2 => {
+          if (err2) return reject(err2);
 
-                callback(null, {
-                    po_code: finalCode,
-                    tran_no: parseInt(finalCode)
-                });
-            }
-        );
+          resolve({
+            po_code: finalCode,
+            tran_no: finalCode
+          });
+        }
+      );
     });
+  });
 }
     if (!purchase_order_ids || !Array.isArray(purchase_order_ids)) {
         return res.status(400).send({ msg: 'purchase_order_ids must be an array' });
@@ -4077,7 +4326,7 @@ function getNextPurchaseOrderCode(callback) {
     // and to get the required data (like the old ID) for the response
     const poQuery = `SELECT * FROM purchase_order WHERE purchase_order_id IN (${ids})`;
 
-    db.query(poQuery, (err, pos) => {
+    db.query(poQuery, async (err, pos) => {
         if (err) {
             console.error(err);
             return res.status(400).send({ data: err });
@@ -4091,13 +4340,14 @@ function getNextPurchaseOrderCode(callback) {
         let pending = pos.length;
 
         // Start a transaction or use a loop to handle multiple POs
-        pos.forEach(po => {
-          
-          getNextPurchaseOrderCode((errCode, codeData) => {
-    if (errCode) return res.status(400).send({ data: errCode });
+        
+          for (const po of pos) {
 
-    let newPoCode = codeData.po_code;
-    let newTranNo = codeData.tran_no;
+  const codeData = await getNextPurchaseOrderCodeAsync();
+
+  let newPoCode = codeData.po_code;
+  let newTranNo = codeData.tran_no;
+         
             // 2️⃣ Use INSERT INTO SELECT to efficiently copy the PO header data
             // purchase_order_id (AUTO_INCREMENT) is excluded from the column list
             const insertHeaderQuery = `
@@ -4120,7 +4370,7 @@ function getNextPurchaseOrderCode(callback) {
                     shipping_address_flat, shipping_address_street, shipping_address_country, 
                     shipping_address_po_code, expense_id, staff_id, NOW() AS purchase_order_date, payment_status, 
                     title, priority, follow_up_date, notes, supplier_inv_code, gst, gst_percentage, 
-                    delivery_to, contact, mobile, payment, project, ?, tran_date, contact_address1, 
+                    delivery_to, contact, mobile, payment, project, ?, NOW() AS tran_date, contact_address1, 
                     contact_address2, contact_address3, country, remarks, req_delivery_date, 
                     contact_person, supplier_code, postal_code, sub_total, net_total, 
                     yr_quote_date, purchase_item, currency, terms_purchase,bill_discount,tax_amount
@@ -4211,12 +4461,475 @@ function getNextPurchaseOrderCode(callback) {
                     }
                 });
             });
-        });
-      });
+          }
+      
     });
 });
+app.post('/repeatPurchaseInvoice', async (req, res) => {
 
+  const { purchase_invoice_ids, created_by } = req.body;
+
+  if (!purchase_invoice_ids || !Array.isArray(purchase_invoice_ids)) {
+    return res.status(400).send({ msg: 'purchase_invoice_ids must be an array' });
+  }
+function getNextPurchaseInvoiceCodeAsync() {
+  return new Promise((resolve, reject) => {
+
+    const sql = `
+      SELECT * FROM setting 
+      WHERE key_text IN ('purchaseInvoiceCodePrefix', 'nextPurchaseInvoiceCode')
+    `;
+
+    db.query(sql, (err, result) => {
+      if (err) return reject(err);
+
+      const codeObj = result.find(r => r.key_text === 'nextPurchaseInvoiceCode');
+      const prefixObj = result.find(r => r.key_text === 'purchaseInvoiceCodePrefix');
+
+      const code = parseInt(codeObj.value);
+      const prefix = prefixObj.value;
+
+      const finalCode = prefix + code;
+      const newValue = (code + 1).toString();
+
+      db.query(
+        `UPDATE setting SET value=? WHERE key_text='nextPurchaseInvoiceCode'`,
+        [newValue],
+        err2 => {
+          if (err2) return reject(err2);
+
+          resolve({
+            pi_code: finalCode,
+            tran_no: finalCode
+          });
+        }
+      );
+    });
+  });
+}
+  const ids = purchase_invoice_ids.map(id => db.escape(id)).join(',');
+
+  const piQuery = `
+    SELECT * FROM purchase_invoice 
+    WHERE purchase_invoice_id IN (${ids})
+  `;
+
+  db.query(piQuery, async (err, pis) => {
+
+    if (err) return res.status(400).send({ data: err });
+
+    if (!pis.length) {
+      return res.status(404).send({ msg: 'No Purchase Invoices found' });
+    }
+
+    const repeatedPIs = [];
+
+    // 🔥 SEQUENTIAL LOOP (no duplicates)
+    for (const pi of pis) {
+
+      const codeData = await getNextPurchaseInvoiceCodeAsync();
+
+      const newCode = codeData.pi_code;
+      const newTranNo = codeData.tran_no;
+
+      // ✅ INSERT HEADER (copy + override fields)
+      const insertHeaderQuery = `
+        INSERT INTO purchase_invoice
+        (purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier,
+         delivery_terms, status, project_id, flag, creation_date, modification_date,
+         created_by, modified_by, supplier_reference_no, our_reference_no, shipping_method,
+         payment_terms, delivery_date, po_date, shipping_address_flat, shipping_address_street,
+         shipping_address_country, shipping_address_po_code, expense_id, staff_id, purchase_invoice_date,
+         payment_status, title, priority, follow_up_date, notes, supplier_inv_code, gst,
+         gst_percentage, delivery_to, contact, mobile, payment, project, tran_no, tran_date,
+         contact_address1, contact_address2, contact_address3, country, remarks, req_delivery_date,
+         contact_person, invoice_date, postal_code, invoice_no, do_no, sub_total, net_total,
+         paid_amount, balance_amount, bill_discount)
+        VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `;
+
+      const headerValues = [
+        pi.purchase_order_id,
+        newCode,                      // ⭐ NEW CODE
+        pi.site_id,
+        pi.supplier_id,
+        pi.contact_id_supplier,
+        pi.delivery_terms,
+        'Repeated',
+        pi.project_id,
+        pi.flag,
+        created_by,
+        created_by,
+        pi.supplier_reference_no,
+        pi.our_reference_no,
+        pi.shipping_method,
+        pi.payment_terms,
+        pi.delivery_date,
+        pi.po_date,
+        pi.shipping_address_flat,
+        pi.shipping_address_street,
+        pi.shipping_address_country,
+        pi.shipping_address_po_code,
+        pi.expense_id,
+        pi.staff_id,
+        new Date(),
+        pi.payment_status,
+        pi.title,
+        pi.priority,
+        pi.follow_up_date,
+        pi.notes,
+        pi.supplier_inv_code,
+        pi.gst,
+        pi.gst_percentage,
+        pi.delivery_to,
+        pi.contact,
+        pi.mobile,
+        pi.payment,
+        pi.project,
+        newTranNo,                    // ⭐ NEW TRAN NO
+        new Date(),
+        pi.contact_address1,
+        pi.contact_address2,
+        pi.contact_address3,
+        pi.country,
+        pi.remarks,
+        pi.req_delivery_date,
+        pi.contact_person,
+        pi.invoice_date,
+        pi.postal_code,
+        pi.invoice_no,
+        pi.do_no,
+        pi.sub_total,
+        pi.net_total,
+        pi.paid_amount,
+        pi.balance_amount,
+        pi.bill_discount
+      ];
+
+      const newPI = await new Promise((resolve, reject) => {
+        db.query(insertHeaderQuery, headerValues, (e, r) => {
+          if (e) reject(e);
+          else resolve(r);
+        });
+      });
+
+      const newPiId = newPI.insertId;
+
+      // 🔹 Copy products
+      const products = await new Promise((resolve, reject) => {
+        db.query(
+          `SELECT * FROM pi_product WHERE purchase_invoice_id = ?`,
+          [pi.purchase_invoice_id],
+          (e, r) => (e ? reject(e) : resolve(r))
+        );
+      });
+
+      for (const p of products) {
+
+        const insertProductQuery = `
+          INSERT INTO pi_product
+          (purchase_invoice_id, purchase_order_id, item_title, quantity, unit, amount, description,
+           creation_date, modification_date, created_by, modified_by, status, cost_price,
+           selling_price, qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand,
+           qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total,
+           discount, total, uom, foc_qty, kilo_price, standard_rate, remarks,
+           discount_amount, discount_percentage)
+          VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `;
+
+        const productValues = [
+          newPiId,
+          p.purchase_order_id,
+          p.item_title,
+          p.quantity,
+          p.unit,
+          p.amount,
+          p.description,
+          created_by,
+          created_by,
+          p.status,
+          p.cost_price,
+          p.selling_price,
+          p.qty_updated,
+          p.qty,
+          p.product_id,
+          p.supplier_id,
+          p.gst,
+          p.damage_qty,
+          p.brand,
+          p.qty_requested,
+          p.qty_delivered,
+          p.price,
+          p.carton_qty,
+          p.loose_qty,
+          p.carton_price,
+          p.gross_total,
+          p.discount,
+          p.total,
+          p.uom,
+          p.foc_qty,
+          p.kilo_price,
+          p.standard_rate,
+          p.remarks,
+          p.discount_amount,
+          p.discount_percentage
+        ];
+
+        await new Promise((resolve, reject) => {
+          db.query(insertProductQuery, productValues, e => {
+            if (e) reject(e);
+            else resolve();
+          });
+        });
+      }
+
+      repeatedPIs.push({
+        old_pi_id: pi.purchase_invoice_id,
+        new_pi_id: newPiId,
+        code: newCode
+      });
+    }
+
+    res.status(200).send({
+      msg: 'Purchase Invoices repeated successfully',
+      data: repeatedPIs
+    });
+
+  });
+
+});
 // NOTE: Assuming 'db' (MySQL connection) and 'app' (Express app) are defined.
+app.post('/repeatPurchaseDebitNote', async (req, res) => {
+
+  const { purchase_debit_note_ids, created_by } = req.body;
+
+  if (!purchase_debit_note_ids || !Array.isArray(purchase_debit_note_ids)) {
+    return res.status(400).send({ msg: 'purchase_debit_note_ids must be an array' });
+  }
+function getNextPurchaseDebitNoteCodeAsync() {
+  return new Promise((resolve, reject) => {
+
+    const sql = `
+      SELECT * FROM setting 
+      WHERE key_text IN ('purchaseDebitNoteCodePrefix', 'nextPurchaseDebitNoteCode')
+    `;
+
+    db.query(sql, (err, result) => {
+      if (err) return reject(err);
+
+      const codeObj = result.find(r => r.key_text === 'nextPurchaseDebitNoteCode');
+      const prefixObj = result.find(r => r.key_text === 'purchaseDebitNoteCodePrefix');
+
+      const code = parseInt(codeObj.value);
+      const prefix = prefixObj.value;
+
+      const finalCode = prefix + code;
+      const newValue = (code + 1).toString();
+
+      db.query(
+        `UPDATE setting SET value=? WHERE key_text='nextPurchaseDebitNoteCode'`,
+        [newValue],
+        err2 => {
+          if (err2) return reject(err2);
+
+          resolve({
+            code: finalCode,
+            tran_no: finalCode
+          });
+        }
+      );
+    });
+  });
+}
+  const ids = purchase_debit_note_ids.map(id => db.escape(id)).join(',');
+
+  const query = `
+    SELECT * FROM purchase_debit_note 
+    WHERE purchase_debit_note_id IN (${ids})
+  `;
+
+  db.query(query, async (err, pdns) => {
+
+    if (err) return res.status(400).send({ data: err });
+
+    if (!pdns.length) {
+      return res.status(404).send({ msg: 'No Debit Notes found' });
+    }
+
+    const repeatedPDNs = [];
+
+    // 🔥 SEQUENTIAL LOOP
+    for (const pdn of pdns) {
+
+      const codeData = await getNextPurchaseDebitNoteCodeAsync();
+
+      const newCode = codeData.code;
+      const newTranNo = codeData.tran_no;
+
+      // ✅ INSERT HEADER
+      const insertHeaderQuery = `
+        INSERT INTO purchase_debit_note
+        (purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier,
+         delivery_terms, status, project_id, flag, creation_date, modification_date,
+         created_by, modified_by, supplier_reference_no, our_reference_no, shipping_method,
+         payment_terms, delivery_date, po_date, shipping_address_flat, shipping_address_street,
+         shipping_address_country, shipping_address_po_code, expense_id, staff_id,
+         purchase_debit_note_date, payment_status, title, priority, follow_up_date, notes,
+         supplier_inv_code, gst, gst_percentage, delivery_to, contact, mobile, payment, project,
+         tran_no, tran_date, contact_address1, contact_address2, contact_address3, country,
+         remarks, req_delivery_date, contact_person, invoice_date, postal_code, invoice_no,
+         do_no, sub_total, net_total, bill_discount)
+        VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `;
+
+      const headerValues = [
+        pdn.purchase_order_id,
+        newCode,                  // ⭐ NEW CODE
+        pdn.site_id,
+        pdn.supplier_id,
+        pdn.contact_id_supplier,
+        pdn.delivery_terms,
+        'Repeated',
+        pdn.project_id,
+        pdn.flag,
+        created_by,
+        created_by,
+        pdn.supplier_reference_no,
+        pdn.our_reference_no,
+        pdn.shipping_method,
+        pdn.payment_terms,
+        pdn.delivery_date,
+        pdn.po_date,
+        pdn.shipping_address_flat,
+        pdn.shipping_address_street,
+        pdn.shipping_address_country,
+        pdn.shipping_address_po_code,
+        pdn.expense_id,
+        pdn.staff_id,
+        new Date(),
+        pdn.payment_status,
+        pdn.title,
+        pdn.priority,
+        pdn.follow_up_date,
+        pdn.notes,
+        pdn.supplier_inv_code,
+        pdn.gst,
+        pdn.gst_percentage,
+        pdn.delivery_to,
+        pdn.contact,
+        pdn.mobile,
+        pdn.payment,
+        pdn.project,
+        newTranNo,                // ⭐ NEW TRAN NO
+        new Date(),
+        pdn.contact_address1,
+        pdn.contact_address2,
+        pdn.contact_address3,
+        pdn.country,
+        pdn.remarks,
+        pdn.req_delivery_date,
+        pdn.contact_person,
+        pdn.invoice_date,
+        pdn.postal_code,
+        pdn.invoice_no,
+        pdn.do_no,
+        pdn.sub_total,
+        pdn.net_total,
+        pdn.bill_discount
+      ];
+
+      const newPDN = await new Promise((resolve, reject) => {
+        db.query(insertHeaderQuery, headerValues, (e, r) => {
+          if (e) reject(e);
+          else resolve(r);
+        });
+      });
+
+      const newPDNId = newPDN.insertId;
+
+      // 🔹 COPY PRODUCTS
+      const products = await new Promise((resolve, reject) => {
+        db.query(
+          `SELECT * FROM pd_product WHERE purchase_debit_note_id = ?`,
+          [pdn.purchase_debit_note_id],
+          (e, r) => (e ? reject(e) : resolve(r))
+        );
+      });
+
+      for (const p of products) {
+
+        const insertProductQuery = `
+          INSERT INTO pd_product
+          (purchase_debit_note_id, purchase_order_id, item_title, quantity, unit, amount, description,
+           creation_date, modification_date, created_by, modified_by, status, cost_price,
+           selling_price, qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand,
+           qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total,
+           discount, total, discount_amount, discount_percentage, kilo_price, standard_rate,
+           foc_qty, remarks, uom)
+          VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `;
+
+        const productValues = [
+          newPDNId,
+          p.purchase_order_id,
+          p.item_title,
+          p.quantity,
+          p.unit,
+          p.amount,
+          p.description,
+          created_by,
+          created_by,
+          p.status,
+          p.cost_price,
+          p.selling_price,
+          p.qty_updated,
+          p.qty,
+          p.product_id,
+          p.supplier_id,
+          p.gst,
+          p.damage_qty,
+          p.brand,
+          p.qty_requested,
+          p.qty_delivered,
+          p.price,
+          p.carton_qty,
+          p.loose_qty,
+          p.carton_price,
+          p.gross_total,
+          p.discount,
+          p.total,
+          p.discount_amount,
+          p.discount_percentage,
+          p.kilo_price,
+          p.standard_rate,
+          p.foc_qty,
+          p.remarks,
+          p.uom
+        ];
+
+        await new Promise((resolve, reject) => {
+          db.query(insertProductQuery, productValues, e => {
+            if (e) reject(e);
+            else resolve();
+          });
+        });
+      }
+
+      repeatedPDNs.push({
+        old_id: pdn.purchase_debit_note_id,
+        new_id: newPDNId,
+        code: newCode
+      });
+    }
+
+    res.status(200).send({
+      msg: 'Purchase Debit Notes repeated successfully',
+      data: repeatedPDNs
+    });
+
+  });
+
+});
 
 app.post('/ConvertToGra', (req, res, next) => {
     
@@ -4440,99 +5153,209 @@ app.get("/recapPurchaseInvoice", async (req, res) => {
   }
 });
 
-router.get('/recapPurchaseDebitNote', async (req, res) => {
-  try {
-    const sql = `
-      SELECT 
-        s.supplier_id,
-        s.company_name,
-        COUNT(pdn.purchase_debit_note_id) AS total_notes,
-        SUM(pdn.net_total) AS total_amount,
-        SUM(CASE WHEN pdn.payment_status = 'Paid' THEN pdn.net_total ELSE 0 END) AS paid_amount,
-        SUM(CASE WHEN pdn.payment_status != 'Paid' THEN pdn.net_total ELSE 0 END) AS balance_amount,
-        MAX(pdn.purchase_debit_note_date) AS last_note_date
-      FROM purchase_debit_note pdn
-      LEFT JOIN supplier s ON s.supplier_id = pdn.supplier_id
-      WHERE pdn.flag = 1
-      GROUP BY s.supplier_id, s.company_name
-      ORDER BY last_note_date DESC
-    `;
+app.post('/recapPurchaseDebitNote', async (req, res) => {
 
-    db.query(sql, (err, result) => {
-      if (err) {
-        console.error('Error fetching Purchase Debit Note Recap:', err);
-        return res.status(500).json({ message: 'Database Error', error: err });
+  const { tran_nos } = req.body;
+
+  if (!Array.isArray(tran_nos) || tran_nos.length === 0) {
+    return res.status(400).send({ success: false, msg: 'No transactions selected' });
+  }
+
+  try {
+
+    for (const tranNo of tran_nos) {
+
+      // 1️⃣ Get Debit Note ID
+      const [pdn] = await new Promise((resolve, reject) => {
+        db.query(
+          `SELECT purchase_debit_note_id 
+           FROM purchase_debit_note 
+           WHERE tran_no = ?`,
+          [tranNo],
+          (e, r) => (e ? reject(e) : resolve(r))
+        );
+      });
+
+      if (!pdn) continue;
+
+      const pdnId = pdn.purchase_debit_note_id;
+
+      // 2️⃣ Get products
+      const products = await new Promise((resolve, reject) => {
+        db.query(
+          `SELECT quantity, price, gst, discount, total 
+           FROM pd_product 
+           WHERE purchase_debit_note_id = ?`,
+          [pdnId],
+          (e, r) => (e ? reject(e) : resolve(r))
+        );
+      });
+
+      let subTotal = 0;
+      let gstTotal = 0;
+
+      for (const p of products) {
+
+        const lineBase = (p.quantity || 0) * (p.price || 0);
+        const discount = p.discount || 0;
+
+        const taxable = lineBase - discount;
+
+        const gstAmt = (taxable * (p.gst || 0)) / 100;
+
+        subTotal += taxable;
+        gstTotal += gstAmt;
       }
-      res.status(200).json(result);
-    });
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    res.status(500).json({ message: 'Internal Server Error', error });
-  }
-});
 
-router.post('/addCostPurchaseInvoice', async (req, res) => {
-  const { purchase_invoice_id, operation_cost } = req.body;
+      const netTotal = subTotal + gstTotal;
 
-  if (!purchase_invoice_id || !operation_cost) {
-    return res.status(400).json({ error: 'Invoice ID and operation cost required' });
-  }
-
-  try {
-    // Update net_total by adding operation cost
-    const query = `
-      UPDATE purchase_invoice
-      SET net_total = net_total + ?, 
-          balance_amount = balance_amount + ? 
-      WHERE purchase_invoice_id = ?
-    `;
-    const [result] = await db.execute(query, [operation_cost, operation_cost, purchase_invoice_id]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Invoice not found' });
+      // 3️⃣ Update header
+      await new Promise((resolve, reject) => {
+        db.query(
+          `UPDATE purchase_debit_note
+           SET sub_total = ?,
+               gst = ?,
+               net_total = ?
+           WHERE purchase_debit_note_id = ?`,
+          [subTotal, gstTotal, netTotal, pdnId],
+          (e) => (e ? reject(e) : resolve())
+        );
+      });
     }
 
-    res.json({ message: 'Operation cost added successfully' });
+    res.send({ success: true });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).send({ success: false });
   }
+
 });
 
-router.post('/makePaymentPurchaseInvoice', async (req, res) => {
-  const { purchase_invoice_id, payment_amount } = req.body;
+app.post('/makePaymentPurchaseInvoice', (req, res) => {
 
-  if (!purchase_invoice_id || !payment_amount) {
-    return res.status(400).json({ error: 'Invoice ID and payment amount required' });
-  }
+  const { purchase_invoice_ids, amount } = req.body;
 
-  try {
-    const [invoiceRows] = await db.execute(
-      `SELECT net_total, paid_amount, balance_amount FROM purchase_invoice WHERE purchase_invoice_id = ?`,
-      [purchase_invoice_id]
+  if (!Array.isArray(purchase_invoice_ids) || purchase_invoice_ids.length === 0)
+    return res.status(400).send({ msg: 'No invoices selected' });
+
+  const payAmt = Number(amount);
+
+  purchase_invoice_ids.forEach(id => {
+
+    db.query(
+      `SELECT net_total, paid_amount 
+       FROM purchase_invoice 
+       WHERE purchase_invoice_id=?`,
+      [id],
+      (err, rows) => {
+
+        if (err || rows.length === 0) return;
+
+        const inv = rows[0];
+
+        const newPaid = (inv.paid_amount || 0) + payAmt;
+        const balance = inv.net_total - newPaid;
+
+        let status = 'Not Paid';
+        if (balance <= 0) status = 'Paid';
+        else if (newPaid > 0) status = 'Partially Paid';
+
+        db.query(
+          `UPDATE purchase_invoice
+           SET paid_amount=?, balance_amount=?, payment_status=?
+           WHERE purchase_invoice_id=?`,
+          [newPaid, balance, status, id]
+        );
+      }
     );
 
-    if (invoiceRows.length === 0) return res.status(404).json({ error: 'Invoice not found' });
+  });
 
-    const invoice = invoiceRows[0];
-    const newPaidAmount = parseFloat(invoice.paid_amount) + parseFloat(payment_amount);
-    const newBalance = parseFloat(invoice.net_total) - newPaidAmount;
-    const paymentStatus = newBalance <= 0 ? 'Paid' : 'Partial';
+  res.send({ success: true });
 
-    await db.execute(
-      `UPDATE purchase_invoice
-       SET paid_amount = ?, balance_amount = ?, payment_status = ?
-       WHERE purchase_invoice_id = ?`,
-      [newPaidAmount, newBalance, paymentStatus, purchase_invoice_id]
-    );
-
-    res.status(200).json({ message: 'Payment recorded successfully', paid_amount: newPaidAmount, balance_amount: newBalance, payment_status: paymentStatus });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
-  }
 });
 
+app.post('/addOperationCostPurchaseInvoice', (req, res) => {
+
+  const { purchase_invoice_ids, cost } = req.body;
+
+  const addCost = Number(cost);
+
+  purchase_invoice_ids.forEach(id => {
+
+    db.query(
+      `SELECT net_total, balance_amount 
+       FROM purchase_invoice 
+       WHERE purchase_invoice_id=?`,
+      [id],
+      (err, rows) => {
+
+        if (err || rows.length === 0) return;
+
+        const inv = rows[0];
+
+        const newNet = inv.net_total + addCost;
+        const newBalance = (inv.balance_amount || newNet) + addCost;
+
+        db.query(
+          `UPDATE purchase_invoice
+           SET net_total=?, balance_amount=?
+           WHERE purchase_invoice_id=?`,
+          [newNet, newBalance, id]
+        );
+
+      }
+    );
+
+  });
+
+  res.send({ success: true });
+
+});
+
+app.post('/recapPurchaseInvoice', (req, res) => {
+
+  const { purchase_invoice_ids } = req.body;
+
+  purchase_invoice_ids.forEach(id => {
+
+    db.query(
+      `SELECT total, gst 
+       FROM pi_product 
+       WHERE purchase_invoice_id=?`,
+      [id],
+      (err, products) => {
+
+        if (err) return;
+
+        let subTotal = 0;
+        let gstTotal = 0;
+
+        products.forEach(p => {
+
+          subTotal += Number(p.total || 0);
+          gstTotal += Number(p.gst || 0);
+
+        });
+
+        const netTotal = subTotal + gstTotal;
+
+        db.query(
+          `UPDATE purchase_invoice
+           SET sub_total=?, gst=?, net_total=?, balance_amount = net_total - IFNULL(paid_amount,0)
+           WHERE purchase_invoice_id=?`,
+          [subTotal, gstTotal, netTotal, id]
+        );
+
+      }
+    );
+
+  });
+
+  res.send({ success: true });
+
+});
 
 app.get('/secret-route', userMiddleware.isLoggedIn, (req, res, next) => {
   console.log(req.userData);
