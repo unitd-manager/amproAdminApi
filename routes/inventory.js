@@ -33,7 +33,7 @@ app.get('/getinventoryMain', (req, res, next) => {
   ,i.created_by
   ,i.modified_by
   ,p.product_code
-  ,i.actual_stock As stock
+  ,i.qty_in_stock As stock
 FROM inventory i
 LEFT JOIN (product p) ON (p.product_id = i.product_id)
 LEFT JOIN (product_company pc) ON (pc.product_id = p.product_id)
