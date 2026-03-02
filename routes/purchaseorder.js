@@ -275,7 +275,10 @@ app.post('/insertPurchaseOrder', (req, res, next) => {
     tax_amount: req.body.tax_amount,
     yr_quote_date: req.body.yr_quote_date,
     purchase_item: req.body.purchase_item,
-    currency: req.body.currency,
+     currency_id: req.body.currency_id,
+     currency_code: req.body.currency_code,
+     currency_rate: req.body.currency_rate,
+     currency_name: req.body.currency_name,
     terms_purchase: req.body.terms_purchase,
     bill_discount: req.body.bill_discount,
     
@@ -1770,6 +1773,10 @@ app.post('/insertGoodsReturn', (req, res, next) => {
     postal_code: req.body.postal_code,
     invoice_no: req.body.invoice_no,
     do_no: req.body.do_no,
+     currency_id: req.body.currency_id,
+     currency_code: req.body.currency_code,
+     currency_rate: req.body.currency_rate,
+     currency_name: req.body.currency_name,
     sub_total: req.body.sub_total,
     net_total: req.body.net_total,
       bill_discount: req.body.bill_discount,
@@ -1934,8 +1941,13 @@ app.post('/insertPurchaseInvoice', (req, res, next) => {
     invoice_date: req.body.invoice_date,
     postal_code: req.body.postal_code,
     invoice_no: req.body.invoice_no,
+     currency_id: req.body.currency_id,
+     currency_code: req.body.currency_code,
+     currency_rate: req.body.currency_rate,
+     currency_name: req.body.currency_name,
     do_no: req.body.do_no,
     sub_total: req.body.sub_total,
+    bill_discount: req.body.bill_discount,
     net_total: req.body.net_total
   };
 
@@ -2099,8 +2111,13 @@ app.post('/insertPurchaseDebitNote', (req, res, next) => {
     invoice_date: req.body.invoice_date,
     postal_code: req.body.postal_code,
     invoice_no: req.body.invoice_no,
+      currency_id: req.body.currency_id,
+     currency_code: req.body.currency_code,
+     currency_rate: req.body.currency_rate,
+     currency_name: req.body.currency_name,
     do_no: req.body.do_no,
     sub_total: req.body.sub_total,
+      bill_discount: req.body.bill_discount,
     net_total: req.body.net_total
   };
 
