@@ -33,7 +33,7 @@ app.get('/getinventoryMain', (req, res, next) => {
   ,i.created_by
   ,i.modified_by
   ,p.product_code
-  ,i.actual_stock As stock
+  ,p.qty_in_stock As stock
 FROM inventory i
 LEFT JOIN (product p) ON (p.product_id = i.product_id)
 LEFT JOIN (product_company pc) ON (pc.product_id = p.product_id)
@@ -638,7 +638,7 @@ WHERE pop.product_id != ''`,
 // });
 
 app.post('/gettabPurchaseOrderLinkedById', (req, res, next) => {
-  db.query(`SELECT pop.net_total
+  db.query(`SELECT pop.gross_total
   ,pop.qty
   ,po.tran_no
   ,po.tran_date

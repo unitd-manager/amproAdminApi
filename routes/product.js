@@ -1841,11 +1841,10 @@ app.get("/getProductAdmin", (req, res, next) => {
   ,p.supplier_id
   ,d.department_name
   ,s.company_name
-  ,i.inventory_id
+  
    ,GROUP_CONCAT(m.file_name) AS images
     from product p
      LEFT JOIN media m ON (p.product_id = m.record_id) 
-     LEFT JOIN inventory i ON p.product_id = i.product_id
      LEFT JOIN department_cli d ON d.department_cli_id = p.department_id
      LEFT JOIN supplier s  ON s.supplier_id = p.supplier_id
     where p.product_id != ''

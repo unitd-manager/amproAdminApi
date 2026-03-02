@@ -45,7 +45,101 @@ app.post('/getMainInvoice', (req, res, next) => {
   );
 });
 
+app.post("/getSalesTotalOutstanding", (req, res) => {
+  const { fromDate, toDate, customerId } = req.body;
 
+  let query = `
+    SELECT 
+      SUM(balance_amount) AS totalSales,
+      SUM(balance_amount - paid_amount) AS totalOutstanding
+    FROM invoice
+    WHERE invoice_date BETWEEN ? AND ?
+  `;
+
+  let params = [fromDate, toDate];
+
+  if (customerId) {
+    query += " AND company_id = ?";
+    params.push(customerId);
+  }
+
+  db.query(query, params, (err, rows) => {
+    if (err) {
+      console.error("TOTAL ERROR:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
+
+    res.json({ data: rows });
+  });
+});
+
+app.post("/getFilteredOrders", (req, res) => {
+  const { fromDate, toDate, customerId } = req.body;
+
+  let query = `
+    SELECT 
+      si.sales_order_id,
+      si.tran_no,
+      si.tran_date,
+      c.company_name AS customer,
+      si.net_total
+    FROM sales_order si
+    LEFT JOIN company c ON si.company_id = c.company_id
+    WHERE si.tran_date BETWEEN ? AND ?
+  `;
+
+  let params = [fromDate, toDate];
+
+  if (customerId) {
+    query += " AND si.company_id = ?";
+    params.push(customerId);
+  }
+
+  query += " ORDER BY si.tran_date DESC";
+
+  db.query(query, params, (err, rows) => {
+    if (err) {
+      console.error("GET FILTERED INVOICE ERROR:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
+
+    res.json({ data: rows });
+  });
+});
+
+app.post("/getFilteredInvoices", (req, res) => {
+  const { fromDate, toDate, customerId } = req.body;
+
+  let query = `
+    SELECT 
+      si.invoice_id,
+      si.invoice_code,
+      si.invoice_date,
+      c.company_name AS customer,
+      si.invoice_amount
+    FROM invoice si
+    LEFT JOIN company c ON si.company_id = c.company_id
+    WHERE si.invoice_date BETWEEN ? AND ?
+  `;
+
+  let params = [fromDate, toDate];
+
+  if (customerId) {
+    query += " AND si.company_id = ?";
+    params.push(customerId);
+  }
+
+  query += " ORDER BY si.invoice_date DESC";
+
+  db.query(query, params, (err, rows) => {
+    if (err) {
+      console.error("GET FILTERED INVOICE ERROR:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
+
+    res.json({ data: rows });
+  });
+});
 app.post('/getMainInvoiceSearch', (req, res, next) => {
   let conditions = [];
   let params = [];
