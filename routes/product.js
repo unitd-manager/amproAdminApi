@@ -160,6 +160,39 @@ app.post("/getProductsPagination", (req, res, next) => {
   });
 });
 
+app.post("/edit-Product-Qty", (req, res, next) => {
+  if (!req.body.product_id) {
+    return res.status(400).send({
+      msg: "Product ID is required",
+    });
+  }
+
+  db.query(
+    `UPDATE product 
+      SET 
+        qty_in_stock = ${db.escape(req.body.qty_in_stock || 0)},
+        carton_qty   = ${db.escape(req.body.carton_qty || 0)},
+        loose_qty    = ${db.escape(req.body.loose_qty || 0)},
+        modification_date = ${db.escape(new Date())},
+        modified_by  = ${db.escape(req.user || "admin")}
+      WHERE product_id = ${db.escape(req.body.product_id)}`,
+      
+    (err, result) => {
+      if (err) {
+        console.log("Error updating product stock:", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
 
 app.post("/searchCustomers", (req, res) => {
   const { search } = req.body;

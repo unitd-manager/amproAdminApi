@@ -376,7 +376,7 @@ app.post('/deleteStockRequest', (req, res, next) => {
 
 // Create Stock Adjustment with items
 app.post("/insertStockAdjustment", (req, res) => {
-  const { stock_adjustment_date, location_id, remarks, items } = req.body;
+  const { stock_adjustment_date, location_id, remarks, created_by,items } = req.body;
 
   // Step 1: Get next stock_adjustment_no
   db.query(
@@ -388,8 +388,8 @@ app.post("/insertStockAdjustment", (req, res) => {
 
       // Step 2: Insert into stock_adjustment (master)
       db.query(
-        "INSERT INTO stock_adjustment (stock_adjustment_date, location_id, remarks, stock_adjustment_no) VALUES (?, ?, ?, ?)",
-        [stock_adjustment_date, location_id, remarks, nextNo],
+        "INSERT INTO stock_adjustment (stock_adjustment_date, location_id, remarks, created_by, stock_adjustment_no) VALUES (?, ?, ?, ?, ?)",
+        [stock_adjustment_date, location_id, remarks, created_by, nextNo],
         (err2, result) => {
           if (err2) return res.status(500).send(err2);
 
