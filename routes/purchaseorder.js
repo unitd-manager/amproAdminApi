@@ -2606,6 +2606,24 @@ app.post('/getGoodsReturnProductByGoodsReturnId', (req, res, next) => {
   );
 });
 
+app.post('/getGoodsReturnProductsByGoodsReturnId', (req, res, next) => {
+  db.query(
+    `SELECT 
+      gr.*,
+      p.title AS product_name,
+      p.product_code
+    FROM goods_return_product gr
+    LEFT JOIN product p ON gr.product_id = p.product_id WHERE gr.goods_return_id = ${db.escape(req.body.goods_return_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+});
+
 app.post('/deleteGoodsReturnProduct', (req, res, next) => {
   db.query(
     `DELETE FROM goods_return_product WHERE goods_return_product_id = ${db.escape(req.body.goods_return_product_id)}`,
@@ -2648,34 +2666,318 @@ app.post('/convertToDebitNote', async (req, res) => {
   }
 });
 
-app.post('/repeatGoodsReturn', async (req, res) => {
-  const { tran_no } = req.body;
-  if (!tran_no) {
-    return res.status(400).json({ message: "tran_no is required" });
-  }
+app.post('/repeatGoodsReturn', (req, res, next) => {
 
-  try {
-    // Fetch original data
-    const [rows] = await db.query("SELECT * FROM goods_return WHERE tran_no = ?", [tran_no]);
-    if (rows.length === 0) return res.status(404).json({ message: "Goods return not found" });
+    const { goods_return_ids, created_by } = req.body;
 
-    const original = rows[0];
+    function getNextGoodsReturnCodeAsync() {
+        return new Promise((resolve, reject) => {
 
-    // Generate new tran_no (e.g., GR-newTimestamp)
-    const newTranNo = `GR${Date.now()}`;
+            const sql = `
+                SELECT * FROM setting 
+                WHERE key_text IN ('goodsReturnCodePrefix', 'nextGoodsReturnCode')
+            `;
 
-    // Insert new record
-    await db.query(`
-      INSERT INTO goods_return (tran_no, tran_date, supplier_id, amount, created_by)
-      VALUES (?, ?, ?, ?, ?)`,
-      [newTranNo, original.tran_date, original.supplier_id, original.amount, original.created_by]
-    );
+            db.query(sql, (err, result) => {
+                if (err) return reject(err);
 
-    res.json({ message: "Goods return repeated successfully.", new_tran_no: newTranNo });
-  } catch (err) {
-    console.error("Error repeating goods return:", err);
-    res.status(500).json({ message: "Server error while repeating." });
-  }
+                const codeObj = result.find(r => r.key_text === 'nextGoodsReturnCode');
+                const prefixObj = result.find(r => r.key_text === 'goodsReturnCodePrefix');
+
+                const code = parseInt(codeObj.value);
+                const prefix = prefixObj.value;
+
+                const finalCode = prefix + code;
+                const newValue = (code + 1).toString();
+
+                db.query(
+                    `UPDATE setting SET value=? WHERE key_text='nextGoodsReturnCode'`,
+                    [newValue],
+                    err2 => {
+                        if (err2) return reject(err2);
+
+                        resolve({
+                            tran_no: finalCode
+                        });
+                    }
+                );
+            });
+        });
+    }
+
+    if (!goods_return_ids || !Array.isArray(goods_return_ids)) {
+        return res.status(400).send({ msg: 'goods_return_ids must be an array' });
+    }
+
+    const ids = goods_return_ids.map(id => db.escape(id)).join(',');
+
+    const grQuery = `SELECT * FROM goods_return WHERE goods_return_id IN (${ids})`;
+
+    db.query(grQuery, async (err, grs) => {
+
+        if (err) {
+            console.error(err);
+            return res.status(400).send({ data: err });
+        }
+
+        if (!grs.length) {
+            return res.status(404).send({ msg: 'No Goods Returns found' });
+        }
+
+        const repeatedGrs = [];
+        let pending = grs.length;
+
+        for (const gr of grs) {
+
+            const codeData = await getNextGoodsReturnCodeAsync();
+
+            let newTranNo = codeData.tran_no;
+
+            const insertHeaderQuery = `
+                INSERT INTO goods_return (
+                    purchase_order_id,
+                    po_code,
+                    site_id,
+                    supplier_id,
+                    contact_id_supplier,
+                    delivery_terms,
+                    status,
+                    project_id,
+                    flag,
+                    creation_date,
+                    modification_date,
+                    created_by,
+                    modified_by,
+                    supplier_reference_no,
+                    our_reference_no,
+                    shipping_method,
+                    payment_terms,
+                    delivery_date,
+                    po_date,
+                    shipping_address_flat,
+                    shipping_address_street,
+                    shipping_address_country,
+                    shipping_address_po_code,
+                    expense_id,
+                    staff_id,
+                    goods_receipt_date,
+                    payment_status,
+                    title,
+                    priority,
+                    follow_up_date,
+                    notes,
+                    supplier_inv_code,
+                    gst,
+                    gst_percentage,
+                    delivery_to,
+                    contact,
+                    mobile,
+                    payment,
+                    project,
+                    tran_no,
+                    tran_date,
+                    contact_address1,
+                    contact_address2,
+                    contact_address3,
+                    country,
+                    remarks,
+                    req_delivery_date,
+                    contact_person,
+                    postal_code,
+                    sub_total,
+                    net_total,
+                    bill_discount
+                )
+                SELECT
+                    purchase_order_id,
+                    po_code,
+                    site_id,
+                    supplier_id,
+                    contact_id_supplier,
+                    delivery_terms,
+                    'Repeated',
+                    project_id,
+                    flag,
+                    NOW(),
+                    NOW(),
+                    ?,
+                    ?,
+                    supplier_reference_no,
+                    our_reference_no,
+                    shipping_method,
+                    payment_terms,
+                    delivery_date,
+                    po_date,
+                    shipping_address_flat,
+                    shipping_address_street,
+                    shipping_address_country,
+                    shipping_address_po_code,
+                    expense_id,
+                    staff_id,
+                    NOW(),
+                    payment_status,
+                    title,
+                    priority,
+                    follow_up_date,
+                    notes,
+                    supplier_inv_code,
+                    gst,
+                    gst_percentage,
+                    delivery_to,
+                    contact,
+                    mobile,
+                    payment,
+                    project,
+                    ?,
+                    NOW(),
+                    contact_address1,
+                    contact_address2,
+                    contact_address3,
+                    country,
+                    remarks,
+                    req_delivery_date,
+                    contact_person,
+                    postal_code,
+                    sub_total,
+                    net_total,
+                    bill_discount
+                FROM goods_return
+                WHERE goods_return_id = ?
+            `;
+
+            const headerValues = [
+                created_by,
+                created_by,
+                newTranNo,
+                gr.goods_return_id
+            ];
+
+            db.query(insertHeaderQuery, headerValues, (err2, newGrResult) => {
+
+                if (err2) {
+                    console.error(err2);
+                    return res.status(400).send({ data: err2 });
+                }
+
+                const newGrId = newGrResult.insertId;
+
+                const productQuery = `
+                    SELECT * FROM goods_return_product 
+                    WHERE goods_return_id = ?
+                `;
+
+                db.query(productQuery, [gr.goods_return_id], (err3, products) => {
+
+                    if (err3) {
+                        console.error(err3);
+                        return res.status(400).send({ data: err3 });
+                    }
+
+                    if (products.length) {
+
+                        let productPending = products.length;
+
+                        products.forEach(p => {
+
+                            const insertProductQuery = `
+                                INSERT INTO goods_return_product
+                                (goods_return_id, purchase_order_id, item_title, quantity, unit, amount, description,
+                                creation_date, modification_date, status, cost_price, selling_price, qty_updated, qty,
+                                product_id, supplier_id, gst, damage_qty, brand, qty_requested, qty_delivered, price,
+                                carton_qty, loose_qty, carton_price, gross_total, discount, total,
+                                foc_qty, discount_percentage, discount_amount)
+                                VALUES (?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                            `;
+
+                            const productValues = [
+                                newGrId,
+                                p.purchase_order_id,
+                                p.item_title,
+                                p.quantity,
+                                p.unit,
+                                p.amount,
+                                p.description,
+                                p.status,
+                                p.cost_price,
+                                p.selling_price,
+                                p.qty_updated,
+                                p.qty,
+                                p.product_id,
+                                p.supplier_id,
+                                p.gst,
+                                p.damage_qty,
+                                p.brand,
+                                p.qty_requested,
+                                p.qty_delivered,
+                                p.price,
+                                p.carton_qty,
+                                p.loose_qty,
+                                p.carton_price,
+                                p.gross_total,
+                                p.discount,
+                                p.total,
+                                p.foc_qty,
+                                p.discount_percentage,
+                                p.discount_amount
+                            ];
+
+                            db.query(insertProductQuery, productValues, err4 => {
+
+                                if (err4) {
+                                    console.error(err4);
+                                    return res.status(400).send({ data: err4 });
+                                }
+
+                                productPending--;
+
+                                if (productPending === 0) {
+
+                                    repeatedGrs.push({
+                                        old_gr_id: gr.goods_return_id,
+                                        new_gr_id: newGrId
+                                    });
+
+                                    pending--;
+
+                                    if (pending === 0) {
+                                        return res.status(200).send({
+                                            data: repeatedGrs,
+                                            msg: 'Goods Returns repeated successfully'
+                                        });
+                                    }
+
+                                }
+
+                            });
+
+                        });
+
+                    } else {
+
+                        repeatedGrs.push({
+                            old_gr_id: gr.goods_return_id,
+                            new_gr_id: newGrId
+                        });
+
+                        pending--;
+
+                        if (pending === 0) {
+                            return res.status(200).send({
+                                data: repeatedGrs,
+                                msg: 'Goods Returns repeated successfully'
+                            });
+                        }
+
+                    }
+
+                });
+
+            });
+
+        }
+
+    });
+
 });
 
 app.get('/getFilteredGoodsReceipt', (req, res) => {
@@ -3234,6 +3536,23 @@ app.get('/getAllPdProducts', (req, res, next) => {
 });
 
 app.post('/getPdProductByPurchaseDebitNoteId', (req, res, next) => {
+  db.query(
+    `SELECT 
+      gr.*,
+      p.title AS product_name,
+      p.product_code
+    FROM pd_product gr
+    LEFT JOIN product p ON gr.product_id = p.product_id WHERE gr.purchase_debit_note_id = ${db.escape(req.body.purchase_debit_note_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+});
+app.post('/getPdProductsByPurchaseDebitNoteId', (req, res, next) => {
   db.query(
     `SELECT 
       gr.*,
@@ -5047,12 +5366,16 @@ app.post('/ConvertToGra', (req, res, next) => {
                             `;
 
                             const productValues = [
-                                newGrnId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
-                                p.creation_date,p.modification_date, p.status, p.cost_price,
-                                p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id,
-                                p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
-                                p.carton_qty, p.loose_qty, p.carton_price, p.gross_total, p.discount, p.total
-                            ];
+ newGrnId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
+ p.creation_date, p.modification_date, p.status, p.cost_price,
+ p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id,
+ p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
+ p.carton_qty, p.loose_qty, p.carton_price, p.gross_total,
+ p.discount, p.total,
+ p.foc_qty,
+ p.discount_percentage,
+ p.discount_amount
+];
 
                             db.query(insertProductQuery, productValues, err4 => {
                                 if (err4) {
