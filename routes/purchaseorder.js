@@ -2998,10 +2998,10 @@ app.get('/getFilteredGoodsReceipt', (req, res) => {
   `;
   const values = [];
 
-  if (tran_no && tran_no.trim()) {
-    query += ` AND gr.tran_no = ?`;
-    values.push(tran_no.trim());
-  }
+if (tran_no && tran_no.trim()) {
+  query += ` AND gr.tran_no LIKE ?`;
+  values.push(`%${tran_no.trim()}%`);
+}
 
   if (from_date && from_date.trim()) {
     query += ` AND gr.tran_date >= ?`;
@@ -3028,6 +3028,7 @@ app.get('/getFilteredGoodsReceipt', (req, res) => {
     values.push(`%${invoice_no.trim()}%`);
   }
 
+   query += ` ORDER BY gr.tran_date DESC`;
   console.log('SQL Query:', query, 'Values:', values); // For debugging
 
   db.query(query, values, (err, result) => {
@@ -3060,9 +3061,9 @@ app.get('/getFilteredPurchaseOrder', (req, res) => {
   const values = [];
 
   if (tran_no && tran_no.trim()) {
-    baseQuery += ` AND gr.tran_no = ?`;
-    values.push(tran_no.trim());
-  }
+  query += ` AND gr.tran_no LIKE ?`;
+  values.push(`%${tran_no.trim()}%`);
+}
 
   if (from_date && from_date.trim()) {
     baseQuery += ` AND gr.tran_date >= ?`;
@@ -3143,9 +3144,9 @@ app.get('/getFilteredGoodsReturn', (req, res) => {
   const values = [];
 
   if (tran_no && tran_no.trim()) {
-    query += ` AND gr.tran_no = ?`;
-    values.push(tran_no.trim());
-  }
+  query += ` AND gr.tran_no LIKE ?`;
+  values.push(`%${tran_no.trim()}%`);
+}
 
   if (from_date && from_date.trim()) {
     query += ` AND gr.tran_date >= ?`;
@@ -3171,6 +3172,9 @@ app.get('/getFilteredGoodsReturn', (req, res) => {
     query += ` AND gr.invoice_no LIKE ?`;
     values.push(`%${invoice_no.trim()}%`);
   }
+
+  // Latest records first
+  query += ` ORDER BY gr.tran_date DESC`;
 
   console.log('SQL Query:', query, 'Values:', values); // For debugging
 
@@ -3200,10 +3204,10 @@ app.get('/getFilteredPurchaseInvoice', (req, res) => {
   `;
   const values = [];
 
-  if (tran_no && tran_no.trim()) {
-    query += ` AND gr.tran_no = ?`;
-    values.push(tran_no.trim());
-  }
+ if (tran_no && tran_no.trim()) {
+  query += ` AND gr.tran_no LIKE ?`;
+  values.push(`%${tran_no.trim()}%`);
+}
 
   if (from_date && from_date.trim()) {
     query += ` AND gr.tran_date >= ?`;
@@ -3225,7 +3229,7 @@ app.get('/getFilteredPurchaseInvoice', (req, res) => {
     values.push(supplier_id.trim());
   }
 
-
+ query += ` ORDER BY gr.tran_date DESC`;
   console.log('SQL Query:', query, 'Values:', values); // For debugging
 
   db.query(query, values, (err, result) => {
@@ -3256,9 +3260,9 @@ app.get('/getFilteredPurchaseDebitNote', (req, res) => {
   const values = [];
 
   if (tran_no && tran_no.trim()) {
-    query += ` AND gr.tran_no = ?`;
-    values.push(tran_no.trim());
-  }
+  query += ` AND gr.tran_no LIKE ?`;
+  values.push(`%${tran_no.trim()}%`);
+}
 
   if (from_date && from_date.trim()) {
     query += ` AND gr.tran_date >= ?`;
@@ -3285,6 +3289,7 @@ app.get('/getFilteredPurchaseDebitNote', (req, res) => {
     values.push(`%${invoice_no.trim()}%`);
   }
 
+   query += ` ORDER BY gr.tran_date DESC`;
   console.log('SQL Query:', query, 'Values:', values); // For debugging
 
   db.query(query, values, (err, result) => {
@@ -5267,9 +5272,46 @@ function getNextPurchaseDebitNoteCodeAsync() {
 
 });
 
-app.post('/ConvertToGra', (req, res, next) => {
-    
+app.post('/ConvertToGra', async (req, res, next) => {
+
     const { purchase_order_ids, created_by } = req.body;
+
+    function getNextGoodsReturnCodeAsync() {
+        return new Promise((resolve, reject) => {
+
+            const sql = `
+                SELECT * FROM setting 
+                WHERE key_text IN ('goodsReturnCodePrefix','nextGoodsReturnCode')
+            `;
+
+            db.query(sql, (err, result) => {
+                if (err) return reject(err);
+
+                const codeObj = result.find(r => r.key_text === 'nextGoodsReturnCode');
+                const prefixObj = result.find(r => r.key_text === 'goodsReturnCodePrefix');
+
+                const code = parseInt(codeObj.value);
+                const prefix = prefixObj.value;
+
+                const finalCode = prefix + code;
+                const newValue = (code + 1).toString();
+
+                db.query(
+                    `UPDATE setting SET value=? WHERE key_text='nextGoodsReturnCode'`,
+                    [newValue],
+                    err2 => {
+                        if (err2) return reject(err2);
+
+                        resolve({
+                            tran_no: finalCode
+                        });
+                    }
+                );
+
+            });
+
+        });
+    }
 
     if (!purchase_order_ids || !Array.isArray(purchase_order_ids)) {
         return res.status(400).send({ msg: 'purchase_order_ids must be an array' });
@@ -5277,11 +5319,10 @@ app.post('/ConvertToGra', (req, res, next) => {
 
     const ids = purchase_order_ids.map(id => db.escape(id)).join(',');
 
-    // 1️⃣ Fetch all selected Purchase Orders (PO) to get data for copying line items
-    // and to iterate through the process.
     const poQuery = `SELECT * FROM purchase_order WHERE purchase_order_id IN (${ids})`;
 
-    db.query(poQuery, (err, pos) => {
+    db.query(poQuery, async (err, pos) => {
+
         if (err) {
             console.error(err);
             return res.status(400).send({ data: err });
@@ -5294,10 +5335,11 @@ app.post('/ConvertToGra', (req, res, next) => {
         const convertedReturns = [];
         let pending = pos.length;
 
-        pos.forEach(po => {
-            // --- TRANSACTION START (Optional but recommended for data integrity) ---
+        for (const po of pos) {
 
-            // 2️⃣ Use INSERT INTO SELECT for efficient header creation in goodsreturn
+            const codeData = await getNextGoodsReturnCodeAsync();
+            const newTranNo = codeData.tran_no;
+
             const insertHeaderQuery = `
                 INSERT INTO goods_return (
                     purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier,
@@ -5310,51 +5352,55 @@ app.post('/ConvertToGra', (req, res, next) => {
                     supplier_inv_code, gst, gst_percentage, delivery_to, contact, mobile, 
                     payment, project, tran_no, tran_date, contact_address1, 
                     contact_address2, contact_address3, country, remarks, req_delivery_date, 
-                    contact_person, postal_code, sub_total, net_total,bill_discount
+                    contact_person, postal_code, sub_total, net_total, bill_discount
                 )
                 SELECT
                     purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier,
-                    delivery_terms, 'Returned' AS status, project_id, flag, NOW() AS creation_date, NOW() AS modification_date,
-                    ? AS created_by, ? AS modified_by, supplier_reference_no, our_reference_no,
+                    delivery_terms, 'Returned', project_id, flag, NOW(), NOW(),
+                    ?, ?, supplier_reference_no, our_reference_no,
                     shipping_method, payment_terms, delivery_date, po_date,
                     shipping_address_flat, shipping_address_street, shipping_address_country,
-                    shipping_address_po_code, expense_id, staff_id, NOW() AS goods_receipt_date, 
+                    shipping_address_po_code, expense_id, staff_id, NOW(),
                     payment_status, title, priority, follow_up_date, notes,
                     supplier_inv_code, gst, gst_percentage, delivery_to, contact, mobile,
-                    payment, project, tran_no, tran_date, contact_address1,
+                    payment, project, ?, NOW(), contact_address1,
                     contact_address2, contact_address3, country, remarks, req_delivery_date,
-                    contact_person, postal_code, sub_total, net_total,bill_discount
+                    contact_person, postal_code, sub_total, net_total, bill_discount
                 FROM purchase_order
                 WHERE purchase_order_id = ?
             `;
 
-            const headerValues = [created_by, created_by, po.purchase_order_id];
+            const headerValues = [
+                created_by,
+                created_by,
+                newTranNo,
+                po.purchase_order_id
+            ];
 
             db.query(insertHeaderQuery, headerValues, (err2, newGrnResult) => {
+
                 if (err2) {
                     console.error(err2);
-                    // --- TRANSACTION ROLLBACK ---
                     return res.status(400).send({ data: err2 });
                 }
 
                 const newGrnId = newGrnResult.insertId;
 
-                // 3️⃣ Copy products from PO → Goods Return Product Table (goodsreturn_product)
                 const productQuery = `SELECT * FROM po_product WHERE purchase_order_id = ?`;
 
                 db.query(productQuery, [po.purchase_order_id], (err3, products) => {
+
                     if (err3) {
                         console.error(err3);
-                        // --- TRANSACTION ROLLBACK ---
                         return res.status(400).send({ data: err3 });
                     }
 
                     if (products.length) {
+
                         let productPending = products.length;
-                        let productInsertError = false;
 
                         products.forEach(p => {
-                            // You must ensure 'goodsreturn_product' has these columns
+
                             const insertProductQuery = `
                                 INSERT INTO goods_return_product
                                   (goods_return_id, purchase_order_id, item_title, quantity, unit, amount, description,
@@ -5366,59 +5412,76 @@ app.post('/ConvertToGra', (req, res, next) => {
                             `;
 
                             const productValues = [
- newGrnId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
- p.creation_date, p.modification_date, p.status, p.cost_price,
- p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id,
- p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
- p.carton_qty, p.loose_qty, p.carton_price, p.gross_total,
- p.discount, p.total,
- p.foc_qty,
- p.discount_percentage,
- p.discount_amount
-];
+                                newGrnId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
+                                p.creation_date, p.modification_date, p.status, p.cost_price,
+                                p.selling_price, p.qty_updated, p.qty, p.product_id, p.supplier_id,
+                                p.gst, p.damage_qty, p.brand, p.qty_requested, p.qty_delivered, p.price,
+                                p.carton_qty, p.loose_qty, p.carton_price, p.gross_total,
+                                p.discount, p.total,
+                                p.foc_qty,
+                                p.discount_percentage,
+                                p.discount_amount
+                            ];
 
                             db.query(insertProductQuery, productValues, err4 => {
+
                                 if (err4) {
                                     console.error(err4);
-                                    productInsertError = true;
-                                    // --- TRANSACTION ROLLBACK ---
-                                    if (pending > 0) { // Prevent multiple responses if error occurs
-                                        res.status(400).send({ data: err4 });
-                                        pending = 0; // Mark as done to prevent final success
-                                    }
-                                    return;
+                                    return res.status(400).send({ data: err4 });
                                 }
 
                                 productPending--;
-                                if (productPending === 0 && !productInsertError) {
-                                    convertedReturns.push({ old_po_id: po.purchase_order_id, new_grn_id: newGrnId });
+
+                                if (productPending === 0) {
+
+                                    convertedReturns.push({
+                                        old_po_id: po.purchase_order_id,
+                                        new_grn_id: newGrnId,
+                                        gr_code: newTranNo
+                                    });
+
                                     pending--;
+
                                     if (pending === 0) {
-                                        // --- TRANSACTION COMMIT ---
                                         return res.status(200).send({
                                             data: convertedReturns,
                                             msg: 'Purchase Orders converted to Goods Returns successfully'
                                         });
                                     }
+
                                 }
+
                             });
+
                         });
+
                     } else {
-                        // No products in PO → Just insert GRN header
-                        convertedReturns.push({ old_po_id: po.purchase_order_id, new_grn_id: newGrnId });
+
+                        convertedReturns.push({
+                            old_po_id: po.purchase_order_id,
+                            new_grn_id: newGrnId,
+                            gr_code: newTranNo
+                        });
+
                         pending--;
+
                         if (pending === 0) {
-                            // --- TRANSACTION COMMIT ---
                             return res.status(200).send({
                                 data: convertedReturns,
                                 msg: 'Purchase Orders converted to Goods Returns successfully'
                             });
                         }
+
                     }
+
                 });
+
             });
-        });
+
+        }
+
     });
+
 });
 
 app.post('/changeStatus', (req, res) => {
