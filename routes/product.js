@@ -1771,6 +1771,8 @@ app.get("/getProducts", (req, res, next) => {
   ,p.description,
   p.qty_in_stock
   ,p.price
+  ,p.carton_qty
+  ,p.loose_qty
   ,p.published
   ,p.creation_date
   ,p.modification_date
@@ -1825,62 +1827,16 @@ app.get("/getProducts", (req, res, next) => {
 
 app.get("/getProductAdmin", (req, res, next) => {
   db.query(
-    `SELECT DISTINCT p.product_id
-  ,p.category_id
-  ,p.alternative_product_name 
-  ,p.purchase_unit_cost 	
-  ,p.sub_category_id
-  ,p.title
-  ,p.description
-  ,p.qty_in_stock
-  ,p.price
-  ,p.published
-  ,p.creation_date
-  ,p.modification_date
-  ,p.description_short
-  ,p.general_quotation
-  ,p.unit
-  ,p.product_group_id
-  ,p.item_code
-  ,p.modified_by
-  ,p.created_by
-  ,p.part_number
-  ,p.price_from_supplier
-  ,p.latest
-  ,p.section_id
-  ,p.hsn
-  ,p.gst
-  ,p.mrp
-  ,p.tag_no
-  ,p.product_type
-  ,p.bar_code
-  ,p.product_code
-  ,p.discount_type
-  ,p.discount_percentage
-  ,p.discount_amount
-  ,p.discount_from_date
-  ,p.discount_to_date
-  ,p.tag
-  ,p.ecommerce_price
-  ,p.retail_price
-  ,p.wholesale_price
-  ,p.department_id
-  ,p.unit
-  ,p.part_number 
-  ,p.carton_price
-  ,p.carton_qty
-  ,p.loose_qty
-  ,p.department_id
-  ,p.supplier_id
+    `SELECT p.*
   ,d.department_name
-  ,s.company_name
+ 
   
    ,GROUP_CONCAT(m.file_name) AS images
     from product p
      LEFT JOIN media m ON (p.product_id = m.record_id) 
      LEFT JOIN department_cli d ON d.department_cli_id = p.department_id
-     LEFT JOIN supplier s  ON s.supplier_id = p.supplier_id
     where p.product_id != ''
+    GROUP BY p.product_id
      ORDER BY p.product_id DESC`,
     (err, result) => {
       if (err) {
@@ -2300,6 +2256,7 @@ app.post("/edit-Product", (req, res, next) => {
               ,carton_weight=${db.escape(req.body.carton_weight)}
             ,m3_per_carton=${db.escape(req.body.m3_per_carton)}
             ,bin=${db.escape(req.body.bin)}
+             ,weight=${db.escape(req.body.weight)}
             ,remarks=${db.escape(req.body.remarks)}
             ,show_on_purchase=${db.escape(req.body.show_on_purchase)}
            ,show_on_sales=${db.escape(req.body.show_on_sales)}
@@ -2314,12 +2271,12 @@ app.post("/edit-Product", (req, res, next) => {
             ,modified_by=${db.escape(req.body.modified_by)}
             ,purchase_uom=${db.escape(req.body.purchase_uom)}
             ,sales_uom=${db.escape(req.body.sales_uom)}
-            ,pcs_per_carton=${db.escape(req.body.pcs_per_carton)}
+            ,min_carton_price=${db.escape(req.body.min_carton_price)}
             ,purchase_unit_cost=${db.escape(req.body.purchase_unit_cost)}
             ,retail_price=${db.escape(req.body.retail_price)}
             ,wholesale_price=${db.escape(req.body.wholesale_price)}
             ,sub_category_id=${db.escape(req.body.sub_category_id)}
-            ,department_id=${db.escape(req.body.department_cli_id)}
+            ,department_id=${db.escape(req.body.department_id)}
             ,supplier_id=${db.escape(req.body.supplier_id)}
             ,display_order=${db.escape(req.body.display_order)}
             ,pcs_per_carton=${db.escape(req.body.pcs_per_carton)}
@@ -2398,6 +2355,29 @@ app.post("/editProductColor", (req, res, next) => {
             ,creation_date=${db.escape(req.body.creation_date)}
             ,modification_date=${db.escape(req.body.modification_date)}
             WHERE product_color_id =  ${db.escape(req.body.product_color_id)}`,
+    (err, result) => {
+      if (err) {
+        console.log("error: ", err);
+        return res.status(400).send({
+          data: err,
+          msg: "failed",
+        });
+      } else {
+        return res.status(200).send({
+          data: result,
+          msg: "Success",
+        });
+      }
+    }
+  );
+});
+
+
+app.get("/getProductsearch", (req, res, next) => {
+  db.query(
+    `SELECT p.*
+    from product p
+    where p.product_id != ''`,
     (err, result) => {
       if (err) {
         console.log("error: ", err);

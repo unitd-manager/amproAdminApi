@@ -511,42 +511,45 @@ app.get('/getFilteredStockAdjustment', (req, res) => {
    location_id
   } = req.query;
 
-  let query = `
-    SELECT gr.*, s.location_name,s.location_code 
-    FROM stock_adjustment gr 
-    LEFT JOIN location s ON gr.location_id = s.location_id 
-    WHERE 1=1
-  `;
-  const values = [];
+let query = `
+  SELECT gr.*, s.location_name, s.location_code 
+  FROM stock_adjustment gr 
+  LEFT JOIN location s ON gr.location_id = s.location_id 
+  WHERE 1=1
+`;
 
-  if (stock_adjustment_no && stock_adjustment_no.trim()) {
-    query += ` AND gr.stock_adjustment_no = ?`;
-    values.push(stock_adjustment_no.trim());
-  }
+const values = [];
 
-  if (from_date && from_date.trim()) {
-    query += ` AND gr.stock_adjustment_date >= ?`;
-    values.push(from_date.trim());
-  }
+if (stock_adjustment_no && stock_adjustment_no.trim()) {
+  query += ` AND gr.stock_adjustment_no = ?`;
+  values.push(stock_adjustment_no.trim());
+}
 
-  if (to_date && to_date.trim()) {
-    query += ` AND gr.stock_adjustment_date <= ?`;
-    values.push(to_date.trim());
-  }
-  
+if (from_date && from_date.trim()) {
+  query += ` AND gr.stock_adjustment_date >= ?`;
+  values.push(from_date.trim());
+}
+
+if (to_date && to_date.trim()) {
+  query += ` AND gr.stock_adjustment_date <= ?`;
+  values.push(to_date.trim());
+}
+
 if (location_id && location_id.trim()) {
-    query += ` AND gr.location_id = ?`;
-    values.push(location_id.trim());
+  query += ` AND gr.location_id = ?`;
+  values.push(location_id.trim());
+}
+
+query += ` ORDER BY gr.stock_adjustment_id DESC`;
+
+console.log('SQL Query:', query, 'Values:', values);
+
+db.query(query, values, (err, result) => {
+  if (err) {
+    return res.status(500).json({ msg: 'DB Error', error: err });
   }
-
-  console.log('SQL Query:', query, 'Values:', values); // For debugging
-
-  db.query(query, values, (err, result) => {
-    if (err) {
-      return res.status(500).json({ msg: 'DB Error', error: err });
-    }
-    res.status(200).json({ msg: 'Success', data: result, total: result.length });
-  });
+  res.status(200).json({ msg: 'Success', data: result, total: result.length });
+});
 });
 
 
@@ -561,7 +564,8 @@ app.delete("/deleteStockAdjustment/:id", (req, res) => {
 app.get('/getAllLocations', (req, res, next) => {
   db.query(`Select s.*
   From location s
-  Where s.location_id !=''`,
+  Where s.location_id !=''
+  ORDER BY s.location_id DESC`,
   (err, result) => {
     if (err) {
       console.log('error: ', err);
