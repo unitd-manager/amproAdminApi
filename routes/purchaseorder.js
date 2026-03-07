@@ -3061,7 +3061,7 @@ app.get('/getFilteredPurchaseOrder', (req, res) => {
   const values = [];
 
   if (tran_no && tran_no.trim()) {
-  query += ` AND gr.tran_no LIKE ?`;
+  baseQuery += ` AND gr.tran_no LIKE ?`;
   values.push(`%${tran_no.trim()}%`);
 }
 
