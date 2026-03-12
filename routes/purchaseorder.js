@@ -2344,6 +2344,24 @@ app.post('/getGrProductByGoodsReceiptId', (req, res, next) => {
   );
 });
 
+app.post('/getGrProductsByGoodsReceiptId', (req, res, next) => {
+  db.query(
+    `SELECT 
+      gr.*,
+      p.title AS product_name,
+      p.product_code
+    FROM gr_product gr
+    LEFT JOIN product p ON gr.product_id = p.product_id
+    WHERE gr.goods_receipt_id = ${db.escape(req.body.goods_receipt_id)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({ data: err });
+      } else {
+        return res.status(200).send({ data: result, msg: 'Success' });
+      }
+    }
+  );
+});
 
 
 app.post('/ConvertToPurchaseInvoice', (req, res, next) => {
@@ -4122,8 +4140,9 @@ app.post('/repeatGoodsReceipt', async (req, res, next) => {
                    creation_date, modification_date, created_by, modified_by, status, cost_price, 
                    selling_price, qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand, 
                    qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total, 
-                   discount, total)
-                VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   discount, total,uom, foc_qty, kilo_price, standard_rate, remarks,
+discount_amount, discount_percentage)
+                VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
               `;
 
               const productValues = [
@@ -4154,7 +4173,14 @@ app.post('/repeatGoodsReceipt', async (req, res, next) => {
                 p.carton_price,
                 p.gross_total,
                 p.discount,
-                p.total
+                p.total,
+                  p.uom,
+          p.foc_qty,
+          p.kilo_price,
+          p.standard_rate,
+          p.remarks,
+          p.discount_amount,
+          p.discount_percentage
               ];
 
               db.query(insertProductQuery, productValues, err4 => {
@@ -4813,41 +4839,43 @@ app.post('/repeatPurchaseInvoice', async (req, res) => {
   if (!purchase_invoice_ids || !Array.isArray(purchase_invoice_ids)) {
     return res.status(400).send({ msg: 'purchase_invoice_ids must be an array' });
   }
-function getNextPurchaseInvoiceCodeAsync() {
-  return new Promise((resolve, reject) => {
 
-    const sql = `
-      SELECT * FROM setting 
-      WHERE key_text IN ('purchaseInvoiceCodePrefix', 'nextPurchaseInvoiceCode')
-    `;
+  function getNextPurchaseInvoiceCodeAsync() {
+    return new Promise((resolve, reject) => {
 
-    db.query(sql, (err, result) => {
-      if (err) return reject(err);
+      const sql = `
+        SELECT * FROM setting 
+        WHERE key_text IN ('purchaseInvoiceCodePrefix', 'nextPurchaseInvoiceCode')
+      `;
 
-      const codeObj = result.find(r => r.key_text === 'nextPurchaseInvoiceCode');
-      const prefixObj = result.find(r => r.key_text === 'purchaseInvoiceCodePrefix');
+      db.query(sql, (err, result) => {
+        if (err) return reject(err);
 
-      const code = parseInt(codeObj.value);
-      const prefix = prefixObj.value;
+        const codeObj = result.find(r => r.key_text === 'nextPurchaseInvoiceCode');
+        const prefixObj = result.find(r => r.key_text === 'purchaseInvoiceCodePrefix');
 
-      const finalCode = prefix + code;
-      const newValue = (code + 1).toString();
+        const code = parseInt(codeObj.value);
+        const prefix = prefixObj.value;
 
-      db.query(
-        `UPDATE setting SET value=? WHERE key_text='nextPurchaseInvoiceCode'`,
-        [newValue],
-        err2 => {
-          if (err2) return reject(err2);
+        const finalCode = prefix + code;
+        const newValue = (code + 1).toString();
 
-          resolve({
-            pi_code: finalCode,
-            tran_no: finalCode
-          });
-        }
-      );
+        db.query(
+          `UPDATE setting SET value=? WHERE key_text='nextPurchaseInvoiceCode'`,
+          [newValue],
+          err2 => {
+            if (err2) return reject(err2);
+
+            resolve({
+              pi_code: finalCode,
+              tran_no: finalCode
+            });
+          }
+        );
+      });
     });
-  });
-}
+  }
+
   const ids = purchase_invoice_ids.map(id => db.escape(id)).join(',');
 
   const piQuery = `
@@ -4865,7 +4893,6 @@ function getNextPurchaseInvoiceCodeAsync() {
 
     const repeatedPIs = [];
 
-    // 🔥 SEQUENTIAL LOOP (no duplicates)
     for (const pi of pis) {
 
       const codeData = await getNextPurchaseInvoiceCodeAsync();
@@ -4873,7 +4900,7 @@ function getNextPurchaseInvoiceCodeAsync() {
       const newCode = codeData.pi_code;
       const newTranNo = codeData.tran_no;
 
-      // ✅ INSERT HEADER (copy + override fields)
+      // ✅ HEADER INSERT QUERY (FIXED)
       const insertHeaderQuery = `
         INSERT INTO purchase_invoice
         (purchase_order_id, po_code, site_id, supplier_id, contact_id_supplier,
@@ -4891,7 +4918,7 @@ function getNextPurchaseInvoiceCodeAsync() {
 
       const headerValues = [
         pi.purchase_order_id,
-        newCode,                      // ⭐ NEW CODE
+        newCode,
         pi.site_id,
         pi.supplier_id,
         pi.contact_id_supplier,
@@ -4927,7 +4954,7 @@ function getNextPurchaseInvoiceCodeAsync() {
         pi.mobile,
         pi.payment,
         pi.project,
-        newTranNo,                    // ⭐ NEW TRAN NO
+        newTranNo,
         new Date(),
         pi.contact_address1,
         pi.contact_address2,
@@ -4956,7 +4983,6 @@ function getNextPurchaseInvoiceCodeAsync() {
 
       const newPiId = newPI.insertId;
 
-      // 🔹 Copy products
       const products = await new Promise((resolve, reject) => {
         db.query(
           `SELECT * FROM pi_product WHERE purchase_invoice_id = ?`,
@@ -4967,16 +4993,17 @@ function getNextPurchaseInvoiceCodeAsync() {
 
       for (const p of products) {
 
-        const insertProductQuery = `
-          INSERT INTO pi_product
-          (purchase_invoice_id, purchase_order_id, item_title, quantity, unit, amount, description,
-           creation_date, modification_date, created_by, modified_by, status, cost_price,
-           selling_price, qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand,
-           qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total,
-           discount, total, uom, foc_qty, kilo_price, standard_rate, remarks,
-           discount_amount, discount_percentage)
-          VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        `;
+        // ✅ PRODUCT INSERT QUERY FIXED
+      const insertProductQuery = `
+INSERT INTO pi_product
+(purchase_invoice_id, purchase_order_id, item_title, quantity, unit, amount, description,
+creation_date, modification_date, created_by, modified_by, status, cost_price,
+selling_price, qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand,
+qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total,
+discount, total, uom, foc_qty, kilo_price, standard_rate, remarks,
+discount_amount, discount_percentage)
+VALUES (?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+`;
 
         const productValues = [
           newPiId,
@@ -5207,7 +5234,7 @@ function getNextPurchaseDebitNoteCodeAsync() {
            qty_requested, qty_delivered, price, carton_qty, loose_qty, carton_price, gross_total,
            discount, total, discount_amount, discount_percentage, kilo_price, standard_rate,
            foc_qty, remarks, uom)
-          VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         `;
 
         const productValues = [
