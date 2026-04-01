@@ -2013,7 +2013,11 @@ app.post('/editPurchaseInvoice', (req, res, next) => {
         sub_total=${db.escape(req.body.sub_total)},
         net_total=${db.escape(req.body.net_total)},
         bill_discount=${db.escape(req.body.bill_discount)},
-        modification_date=${db.escape(new Date().toISOString())}
+        modification_date=${db.escape(new Date().toISOString())},
+        currency_id = ${db.escape(req.body.currency_id)},
+        currency_name = ${db.escape(req.body.currency_name)},
+        currency_rate = ${db.escape(req.body.currency_rate)},
+        currency_code = ${db.escape(req.body.currency_code)}
     WHERE purchase_invoice_id = ${db.escape(req.body.purchase_invoice_id)}
   `,
   (err, result) => {
@@ -2804,7 +2808,11 @@ app.post('/repeatGoodsReturn', (req, res, next) => {
                     postal_code,
                     sub_total,
                     net_total,
-                    bill_discount
+                    bill_discount, 
+                    currency_id, 
+                    currency_name, 
+                    currency_rate,
+                    currency_code
                 )
                 SELECT
                     purchase_order_id,
@@ -2858,7 +2866,11 @@ app.post('/repeatGoodsReturn', (req, res, next) => {
                     postal_code,
                     sub_total,
                     net_total,
-                    bill_discount
+                    bill_discount,
+                    currency_id, 
+                    currency_name, 
+                    currency_rate,
+                    currency_code
                 FROM goods_return
                 WHERE goods_return_id = ?
             `;
@@ -3355,6 +3367,10 @@ app.get('/getFilteredPurchaseDebitNote', (req, res) => {
     gross_total: req.body.gross_total,
     discount: req.body.discount,
     total: req.body.total,
+    currency_code: req.body.currency_code,
+    currency_rate: req.body.currency_rate,
+    currency_id: req.body.currency_id,
+    currency_name: req.body.currency_name,
     discount_percentage: req.body.discount_percentage ?? 0,
     discount_amount: req.body.discount_amount ?? 0,
     remarks: req.body.remarks??'',
@@ -4047,7 +4063,7 @@ app.post('/repeatGoodsReceipt', async (req, res, next) => {
            payment_status, title, priority, follow_up_date, notes, supplier_inv_code, gst, 
            gst_percentage, delivery_to, contact, mobile, payment, project, tran_no, tran_date, 
            contact_address1, contact_address2, contact_address3, country, remarks, req_delivery_date, 
-           contact_person, invoice_date, postal_code, invoice_no, do_no, sub_total, net_total)
+           contact_person, invoice_date, postal_code, invoice_no, do_no, sub_total, net_total, currency_id, currency_name, currency_rate, currency_code,?,?,?,?)
         VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `;
 
@@ -4104,7 +4120,11 @@ app.post('/repeatGoodsReceipt', async (req, res, next) => {
         gr.invoice_no,
         gr.do_no,
         gr.sub_total,
-        gr.net_total
+        gr.net_total,
+        gr.currency_code,
+        gr.currency_id,
+        gr.currency_name,
+        gr.currency_rate
       ];
 
       db.query(insertHeaderQuery, headerValues, (err2, newGrResult) => {
@@ -4406,8 +4426,8 @@ app.post('/repeatGoodsReturn', async (req, res) => {
            payment_status, title, priority, follow_up_date, notes, supplier_inv_code, gst, gst_percentage, delivery_to, 
            contact, mobile, payment, project, tran_no, tran_date, contact_address1, contact_address2, contact_address3, 
            country, remarks, req_delivery_date, contact_person, purchase_order_id, invoice_date, invoice_no, 
-           postal_code, do_no, sub_total, net_total)
-        VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+           postal_code, do_no, sub_total, net_total, currency_id, currency_name, currency_rate, currency_code)
+        VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `;
 
       const headerValues = [
@@ -4462,7 +4482,11 @@ app.post('/repeatGoodsReturn', async (req, res) => {
         gr.postal_code,
         gr.do_no,
         gr.sub_total,
-        gr.net_total
+        gr.net_total,
+        gr.currency_id, 
+        gr.currency_name, 
+        gr.currency_rate,
+        gr.currency_code
       ];
 
       const newGR = await new Promise((resolve, reject) => {
@@ -4549,7 +4573,7 @@ app.post('/repeatGoodsReturn', async (req, res) => {
 
 });
 
-app.post('/convertToPurchaseDebitNote', (req, res) => {
+app.post('/ConvertToPurchaseDebitNote', (req, res) => {
   const { goods_return_ids, created_by } = req.body;
 
   if (!goods_return_ids || !Array.isArray(goods_return_ids)) {
@@ -4606,11 +4630,37 @@ app.post('/convertToPurchaseDebitNote', (req, res) => {
             products.forEach(p => {
               const insertProductQuery = `
                 INSERT INTO pd_product
-                  (purchase_debit_note_id, purchase_order_id, item_title, quantity, unit, amount, description,
-                   creation_date, modification_date, created_by, modified_by, status, cost_price, selling_price,
-                   qty_updated, qty, product_id, supplier_id, gst, damage_qty, brand, qty_requested, qty_delivered,
-                   price, carton_qty, loose_qty, carton_price, gross_total, discount, total)
-                VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                  (purchase_debit_note_id, 
+                  purchase_order_id, 
+                  item_title, 
+                  quantity, 
+                  unit, 
+                  amount, 
+                  description,
+                   creation_date, 
+                   modification_date, 
+                   created_by, 
+                   modified_by, 
+                   status, 
+                   cost_price, 
+                   selling_price,
+                   qty_updated, 
+                   qty, 
+                   product_id, 
+                   supplier_id, 
+                   gst, 
+                   damage_qty,
+                    brand, 
+                    qty_requested, 
+                    qty_delivered,
+                   price, 
+                   carton_qty, 
+                   loose_qty, 
+                   carton_price, 
+                   gross_total, 
+                   discount, 
+                   total)
+                VALUES (?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
               `;
               const productValues = [
                 newPDNId, p.purchase_order_id, p.item_title, p.quantity, p.unit, p.amount, p.description,
@@ -4728,7 +4778,7 @@ function getNextPurchaseOrderCodeAsync() {
                     delivery_to, contact, mobile, payment, project, tran_no, tran_date, contact_address1, 
                     contact_address2, contact_address3, country, remarks, req_delivery_date, 
                     contact_person, supplier_code, postal_code, sub_total, net_total, 
-                    yr_quote_date, purchase_item, currency, terms_purchase,bill_discount,tax_amount
+                    yr_quote_date, purchase_item, currency, terms_purchase,bill_discount,tax_amount,currency_code, currency_name, currency_rate, currency_id
                 )
                 SELECT 
                     ?, site_id, supplier_id, contact_id_supplier, delivery_terms, 'Repeated' AS status, project_id,
@@ -4740,7 +4790,7 @@ function getNextPurchaseOrderCodeAsync() {
                     delivery_to, contact, mobile, payment, project, ?, NOW() AS tran_date, contact_address1, 
                     contact_address2, contact_address3, country, remarks, req_delivery_date, 
                     contact_person, supplier_code, postal_code, sub_total, net_total, 
-                    yr_quote_date, purchase_item, currency, terms_purchase,bill_discount,tax_amount
+                    yr_quote_date, purchase_item, currency, terms_purchase,bill_discount,tax_amount,currency_code, currency_name, currency_rate, currency_id
                 FROM purchase_order
                 WHERE purchase_order_id = ?
             `;
@@ -4912,8 +4962,8 @@ app.post('/repeatPurchaseInvoice', async (req, res) => {
          gst_percentage, delivery_to, contact, mobile, payment, project, tran_no, tran_date,
          contact_address1, contact_address2, contact_address3, country, remarks, req_delivery_date,
          contact_person, invoice_date, postal_code, invoice_no, do_no, sub_total, net_total,
-         paid_amount, balance_amount, bill_discount)
-        VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         paid_amount, balance_amount, bill_discount, currency_id, currency_name, currency_rate)
+        VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `;
 
       const headerValues = [
@@ -4971,7 +5021,10 @@ app.post('/repeatPurchaseInvoice', async (req, res) => {
         pi.net_total,
         pi.paid_amount,
         pi.balance_amount,
-        pi.bill_discount
+        pi.bill_discount, 
+        pi.currency_id,
+        pi.currency_name,
+        pi.currency_rate
       ];
 
       const newPI = await new Promise((resolve, reject) => {
@@ -5146,8 +5199,8 @@ function getNextPurchaseDebitNoteCodeAsync() {
          supplier_inv_code, gst, gst_percentage, delivery_to, contact, mobile, payment, project,
          tran_no, tran_date, contact_address1, contact_address2, contact_address3, country,
          remarks, req_delivery_date, contact_person, invoice_date, postal_code, invoice_no,
-         do_no, sub_total, net_total, bill_discount)
-        VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         do_no, sub_total, net_total, bill_discount, currency_id, currency_name, currency_rate)
+        VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW(),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `;
 
       const headerValues = [
@@ -5203,7 +5256,10 @@ function getNextPurchaseDebitNoteCodeAsync() {
         pdn.do_no,
         pdn.sub_total,
         pdn.net_total,
-        pdn.bill_discount
+        pdn.bill_discount,
+        pdn.currency_id,
+        pdn.currency_name,
+        pdn.currency_rate
       ];
 
       const newPDN = await new Promise((resolve, reject) => {
